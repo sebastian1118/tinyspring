@@ -16,12 +16,14 @@ import java.lang.annotation.Target;
 public @interface SecurityCheck {
 
 	/**
-	 * default value is true. set to false if you wish to override class-level annotation. Only
+	 * default value is true. set to false if you wish to override TYPE-level annotation. Only
 	 * effective if annotated on METHOD.
 	 *
 	 * @return
 	 */
 	boolean value() default true;
+
+	boolean stateless() default false;
 
 	String[] requireRole() default { };
 
@@ -29,8 +31,7 @@ public @interface SecurityCheck {
 
 	/**
 	 * If set, only matched paths will be checked unless it is excluded. Only effective if
-	 * annotated
-	 * on TYPE.
+	 * annotated on TYPE.
 	 *
 	 * @return
 	 */

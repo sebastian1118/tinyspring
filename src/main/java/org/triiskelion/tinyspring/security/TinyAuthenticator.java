@@ -3,6 +3,8 @@ package org.triiskelion.tinyspring.security;
 
 import org.triiskelion.tinyspring.AbstractSpringBean;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 /**
@@ -26,6 +28,9 @@ public abstract class TinyAuthenticator extends AbstractSpringBean {
 	public abstract AuthenticationResult authenticate(HttpSession session,
 	                                                  String username,
 	                                                  String password);
+
+	public abstract void authenticateStatelessly(HttpServletRequest request, HttpServletResponse
+			response);
 
 
 	public void setLogoutSuccessUrl(String logoutSuccessUrl) {

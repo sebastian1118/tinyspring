@@ -8,6 +8,7 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import org.springframework.web.servlet.resource.ResourceHttpRequestHandler;
 
+import javax.annotation.Resource;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -28,6 +29,8 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 
 	private String privilegeDeniedUrl;
 
+	@Resource
+	TinyAuthenticator authenticator;
 
 	@Override
 	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object
@@ -112,25 +115,33 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 			ServletException, IOException {
 
 		log.debug("Security check for [{}], require roles [{}], privileges [{}]", entry,
-				StringUtils.join(annotation
-						.requireRole(), ","), annotation.requirePrivilege());
-		TinyUser user =
-				(TinyUser) request.getSession().getAttribute(TinyAuthenticator.SESSION_NAME_USER);
-		if(user == null) {
-			log.debug("Security check for [{}] user not found. Access denied.", entry);
-			request.setAttribute("notLogin", true);
-			RequestDispatcher rd = request.getRequestDispatcher(accessDeniedUrl);
-			rd.forward(request, response);
-		} else {
+				StringUtils.join(annotation.requireRole(), ","), annotation.requirePrivilege());
 
-			String key = annotation.requirePrivilege();
-			if(key != null && !key.isEmpty()) {
-				int value = PrivilegeService.getPrivilege(user.getPrivilegeSet(), key);
-				if(value <= 0) {
-					log.debug("Security check for [{}] privilege[{}] failed. Access denied.",
-							entry, key);
-//					RequestDispatcher rd = request.getRequestDispatcher(privilegeDeniedUrl);
-					response.sendRedirect(privilegeDeniedUrl);
+		if(annotation.stateless()) {//check from header
+			authenticator.authenticateStatelessly(request, response);
+
+		} else {
+			TinyUser user =
+					(TinyUser) request.getSession().getAttribute(TinyAuthenticator
+							.SESSION_NAME_USER);
+
+			if(user == null) {
+				log.debug("Security check for [{}] user not found. Access denied.", entry);
+				request.setAttribute("notLogin", true);
+				RequestDispatcher rd = request.getRequestDispatcher(accessDeniedUrl);
+				rd.forward(request, response);
+			} else {
+
+				String key = annotation.requirePrivilege();
+				if(key != null && !key.isEmpty()) {
+					int value = PrivilegeService.getPrivilege(user.getPrivilegeSet(), key);
+					if(value <= 0) {
+						log.debug("Security check for [{}] privilege[{}] failed. Access denied.",
+								entry, key);
+						//					RequestDispatcher rd = request.getRequestDispatcher
+						// (privilegeDeniedUrl);
+						response.sendRedirect(privilegeDeniedUrl);
+					}
 				}
 			}
 		}

@@ -1,5 +1,6 @@
 package org.triiskelion.tinyspring.viewmodel;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -75,6 +76,15 @@ public class Page<T> {
 	public List<T> getData() {
 
 		return data;
+	}
+
+	public <A> Page<A> map(Class<A> clazz, Mapper<T, A> mapper) {
+
+		List<A> newData = new ArrayList<>();
+		for(T t : getData()) {
+			newData.add(mapper.map(t));
+		}
+		return new Page<A>(newData, getPage(), getMax(), getTotal());
 	}
 
 }

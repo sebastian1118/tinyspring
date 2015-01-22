@@ -4,16 +4,10 @@
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %level %C{1}#%M() L:%L - %msg%n" />
         </Console>
-        <RollingFile name="RollingFile" fileName="../logs/neoCRM.log"
-            filePattern="../logs/neoCRM-%d{yyyy-MM-dd}.log" ignoreExceptions="false">
-            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %level %C{1}#%M() L:%L - %msg%n" />
-            <TimeBasedTriggeringPolicy />
-        </RollingFile>
     </Appenders>
     <Loggers>
         <Root level="DEBUG">
             <AppenderRef ref="Console" />
-            <!--<AppenderRef ref="RollingFile" />-->
         </Root>
     </Loggers>
 </Configuration>
