@@ -1,20 +1,22 @@
 tinyspring
 ==========
-###TinySpring is a set of tools for spring-mvc-JPA projects. It began when I wished to write a practical generic DAO class for my spring-mvc project.
+###TinySpring is a set of tools for spring-mvc-JPA projects.
 
-###For now TinySpring contains three parts:
+### Features:
 
-* A generic DAO class with helper methods to create queries more easily.
+* Generic DAO class with query builder to create queries more easily.
 
-* Some view models to help organize your view objects.
+* Utilities to make your MVC code cleaner. (View models, object mapping, etc.)
 
-* Some utilities missing from classic Apache Commons or Google Guava libraries (or I just don't know of, in this case please inform me ;] ). (Have been moved to tinyutils project in case of using it for JavaSE project)
+* (Planned) A minimal security framework to do the authentication and authorization.
+
+* (Planned) An online API documentation built from Spring mvc annotation.
 
 [![Build Status](https://travis-ci.org/sebastian1118/tinyspring.svg?branch=master)](https://travis-ci.org/sebastian1118/tinyspring)
 
 # Usage
 
-## Generic DAO
+## Generic DAO & Query Builder
 
 Assuming you have an Entity called `User` and you wish a DAO class to access `User`'s data from database.
 You can simply create a `UserDao` class which extends `AbstractDao<User>` and implements the abastract method `getEntityClass()` in which returns the entity class we'd like to access:
