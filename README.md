@@ -10,6 +10,7 @@ tinyspring
 
 * Some utilities missing from classic Apache Commons or Google Guava libraries (or I just don't know of, in this case please inform me ;] ). (Have been moved to tinyutils project in case of using it for JavaSE project)
 
+[![Build Status](https://travis-ci.org/sebastian1118/tinyspring.svg?branch=master)](https://travis-ci.org/sebastian1118/tinyspring)
 
 # Usage
 

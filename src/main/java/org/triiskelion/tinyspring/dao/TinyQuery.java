@@ -26,17 +26,19 @@ public class TinyQuery<T> {
 
 	protected static Logger log = LoggerFactory.getLogger(TinyQuery.class);
 
-	private boolean autoClose = false;
-
 	protected Class<T> entityClass;
 
 	protected EntityManager entityManager;
 
 	/**
-	 * the main query string.
+	 * the raw JPQL expression set by <code>query()</code>
+	 */
+	protected StringBuilder jpqlExp = new StringBuilder();
+
+	/**
+	 * The SELECT clause
 	 */
 	protected StringBuilder selectClause = new StringBuilder();
-
 
 	/**
 	 * The JOIN clause
@@ -78,51 +80,71 @@ public class TinyQuery<T> {
 	protected int index = 0;
 
 	/**
-	 * whether parameter with null value should be ignored.
+	 * Whether parameter with null value should be ignored.
 	 */
 	protected boolean ignoreNullParameter = true;
 
 	/**
-	 * start row numbered from 0
+	 * Start row numbered from 0<br>
+	 * It is used for row based pagination
 	 */
 	protected int startRow = -1;
 
 	/**
-	 * max rows to retrieve
+	 * Max rows to retrieve<br>
+	 * It is used for row based pagination
 	 */
 	protected int maxRow = -1;
 
+
 	/**
-	 *
+	 * Start page numbered from 1.<br>
+	 * It is used for page based pagination
+	 */
+	private Integer pageNumber;
+
+	/**
+	 * Rows per page to retrieve<br>
+	 * It is used for page based pagination
+	 */
+	private Integer numberPerPage;
+
+	/**
+	 * TRUE if page based pagination is applied.
+	 */
+	private boolean paged = false;
+
+	/**
+	 * If TRUE the built jpql will be printed.
 	 */
 	protected boolean showJpql = true;
 
-	private Integer page;
 
-	private Integer numberPerPage;
-
-	private boolean paged = false;
-
+	/**
+	 * @param entityManager
+	 * 		JPA entity manager
+	 * @param entityClass
+	 * 		entity to query
+	 */
 	public TinyQuery(EntityManager entityManager, Class<T> entityClass) {
 
 		this.entityManager = entityManager;
 		this.entityClass = entityClass;
 	}
 
+	/**
+	 * @param entityManager
+	 * 		JPA entity manager
+	 * @param entityClass
+	 * 		entity to query
+	 * @param showJpql
+	 * 		pass TRUE to print final JPQL expression.
+	 */
 	public TinyQuery(EntityManager entityManager, Class<T> entityClass, boolean showJpql) {
 
 		this.entityManager = entityManager;
 		this.entityClass = entityClass;
 		this.showJpql = showJpql;
-	}
-
-	public TinyQuery(EntityManager entityManager, Class<T> entityClass, boolean showJpql,
-	                 boolean autoClose) {
-
-		this.entityManager = entityManager;
-		this.entityClass = entityClass;
-		this.showJpql = showJpql;
-		this.autoClose = autoClose;
 	}
 
 	/**
@@ -148,9 +170,10 @@ public class TinyQuery<T> {
 	 * otherwise an IllegalArgumentException will be thrown.<br><br>
 	 * Ignoring null-valued predicate is convenient for the optional conditions like filters,
 	 * but ignoring a obligatory condition may bring a false result. For example you want to
-	 * find user with specific username, if the username passed in as parameter is null therefore
-	 * ignored, the query will just find all the users. In this case set ignoreNullParameter to
-	 * FALSE to force throw an IllegalArgumentException while a null value is encountered.
+	 * find user with specific username, if the username passed in as parameter is null and
+	 * ignored, the query will retrieve all the users. In this case use
+	 * <code>ignoreNull(false)</code> to make TinyQuery check null parameters and throw an
+	 * IllegalArgumentException if a null value is encountered.
 	 *
 	 * @param ignored
 	 * 		whether null parameters should be ignored.
@@ -175,7 +198,18 @@ public class TinyQuery<T> {
 	////////////////////////////////////////////////////////////////////////////////////////
 	// BEGIN structural JPQL query
 	//
+
+	/**
+	 * Delete from the entity class managed by the query. Exclusive to select() and update()
+	 * Corresponding JPQL is "DELETE FROM entityClass _this"
+	 *
+	 * @return the same TinyQuery instance
+	 */
 	public TinyQuery<T> delete() {
+
+		if(selectClause.length() > 0) {
+			throw new IllegalStateException("SELECT already defined");
+		}
 
 		selectClause.append(String.format("DELETE FROM %s %s",
 				entityClass.getCanonicalName(), tableAlias));
@@ -184,12 +218,16 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Select the entity class managed by the query.
+	 * Select from the entity class managed by the query. Exclusive to delete() and update()
+	 * Corresponding JPQL is "SELECT _this FROM entityClass _this"
 	 *
 	 * @return the same TinyQuery instance
 	 */
 	public TinyQuery<T> select() {
 
+		if(selectClause.length() > 0) {
+			throw new IllegalStateException("SELECT already defined");
+		}
 		selectClause.append(String.format("SELECT %s FROM %s %s",
 				tableAlias, entityClass.getCanonicalName(), tableAlias));
 
@@ -198,13 +236,18 @@ public class TinyQuery<T> {
 
 
 	/**
-	 * Select specific columns, the result must be retrieved by <code>getUntypedResultList()
-	 * </code>
+	 * Select specific columns from the entity class managed by the query. Exclusive to delete()
+	 * and update().<br>
+	 * the result must be retrieved using <code>getUntypedResultList() </code>
 	 *
 	 * @return the same TinyQuery instance
 	 */
 	//todo select from different table is broken!
 	public TinyQuery<T> select(String... cols) {
+
+		if(selectClause.length() > 0) {
+			throw new IllegalStateException("SELECT already defined");
+		}
 
 		selectClause.append("SELECT ");
 		ArrayList<String> list = new ArrayList<>();
@@ -238,8 +281,8 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Add additional entity to FROM clause besides the entity  which the invoking DAO object
-	 * represents. must use after select().
+	 * Add additional entity to FROM clause besides the entity class managed by the query.
+	 * It must be invoked after select().
 	 *
 	 * @param entityClass
 	 * 		entity class
@@ -250,9 +293,11 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> from(Class entityClass, String alias) {
 
-		selectClause.append(String.format(",%s %s",
-				entityClass.getCanonicalName(), alias));
+		if(!selectClause.toString().toUpperCase().contains("SELECT")) {
+			throw new IllegalStateException("from() must be invoked after select()");
+		}
 
+		selectClause.append(String.format(",%s %s", entityClass.getCanonicalName(), alias));
 		return this;
 	}
 
@@ -275,11 +320,11 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Insert the predicates into WHERE clause.
-	 * Safe for multiple invocation, in this case the predicates will be concatenated by AND.
+	 * Add predicates to the restriction(the WHERE clause).
+	 * Safe for multiple invocation, in this case the predicates are conjoined with AND.
 	 *
 	 * @param predicates
-	 * 		predicates for the WHERE clause.
+	 * 		the restriction conditions
 	 *
 	 * @return the same TinyQuery instance
 	 */
@@ -290,10 +335,10 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Concatenate the predicates in parameters by AND then with the previous predicates.
+	 * Conjoin the predicates with AND then with the previous predicates.
 	 *
 	 * @param predicates
-	 * 		predicates for the WHERE clause, multiple predicates will be conjunct by AND.
+	 * 		the restriction conditions, multiple predicates will be conjoined with AND.
 	 *
 	 * @return the same TinyQuery instance
 	 */
@@ -315,10 +360,10 @@ public class TinyQuery<T> {
 
 
 	/**
-	 * Combine the predicates by OR with the previous predicates.
+	 * Conjoin the predicates and the previous predicates with OR.
 	 *
 	 * @param predicates
-	 * 		predicates for the WHERE clause, multiple predicates will be conjunct by AND.
+	 * 		the restriction conditions, multiple predicates will be conjoined with AND.
 	 *
 	 * @return the same TinyQuery instance
 	 */
@@ -339,10 +384,10 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Add ORDER BY clause. Multiple invocation will be added successively
+	 * Add an ORDER BY clause. For multiple invocation the clauses will be added successively.
 	 *
 	 * @param column
-	 * 		column to order
+	 * 		column to apply
 	 * @param orderType
 	 * 		asc or desc
 	 *
@@ -354,13 +399,13 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Add ORDER BY clause for the columns from joined tables. Multiple invocation will be added
-	 * successively.
+	 * Add an ORDER BY clause for the columns from joined tables.
+	 * For multiple invocation the clauses will be added successively.
 	 *
 	 * @param alias
 	 * 		alias of the joined table
 	 * @param column
-	 * 		column to order
+	 * 		column to apply
 	 * @param orderType
 	 * 		asc or desc
 	 *
@@ -383,11 +428,11 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Add GROUP BY clause. Multiple invocation will be added successively.
+	 * Add an GROUP BY clause. Multiple invocation will be added successively.
 	 * </code>
 	 *
 	 * @param column
-	 * 		column to group
+	 * 		column to apply
 	 *
 	 * @return the same TinyQuery instance
 	 */
@@ -397,13 +442,13 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Add GROUP BY clause for the columns from joined tables. Multiple invocation will be added
-	 * successively.
+	 * Add GROUP BY clause for the columns from joined tables.
+	 * For multiple invocation the clauses will be added successively.
 	 *
 	 * @param alias
 	 * 		alias of the joined table
 	 * @param column
-	 * 		column to order
+	 * 		column to apply
 	 *
 	 * @return the same TinyQuery instance
 	 */
@@ -426,6 +471,7 @@ public class TinyQuery<T> {
 	// END structural JPQL query
 	////////////////////////////////////////////////////////////////////////////////////////
 
+
 	////////////////////////////////////////////////////////////////////////////////////////
 	// BEGIN raw JPQL query
 	//
@@ -440,8 +486,7 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> query(String jpql) {
 
-		selectClause.delete(0, selectClause.length());
-		selectClause.append(jpql);
+		jpqlExp.append(jpql);
 		return this;
 	}
 
@@ -529,10 +574,10 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * This method just executes the prepared JPA query then call its getSingleResult() method.
+	 * This method executes the JPA query and return the result of <code>getSingleResult()</code>.
 	 * The returned value is untyped.
 	 *
-	 * @return single untyped result
+	 * @return the untyped result
 	 *
 	 * @see javax.persistence.Query#getSingleResult()
 	 */
@@ -544,25 +589,26 @@ public class TinyQuery<T> {
 
 	/**
 	 * Execute a SELECT query and return the query's first result.
+	 * The result is wrapped by com.google.common.base.Optional object.
 	 *
 	 * @return first element of the result list.
 	 */
 	public Optional<T> getFirstResult() {
 
 		List<T> result = this.limit(0, 1).getResultList();
-		return result.size() > 0 ? Optional.of(result.get(0)) : (Optional<T>) Optional.absent();
+		return result.size() > 0 ? Optional.of(result.get(0)) : Optional.<T>absent();
 	}
 
 	/**
-	 * Limit the number of the results based on page number.Null parameters will be ignored
-	 * quietly.
+	 * Limit the number of the results based on page number.
+	 * Null parameters will be ignored quietly.
 	 *
 	 * @param page
-	 * 		numbered from 1, nullable
+	 * 		page numbered from 1, nullable
 	 * @param numberPerPage
 	 * 		maximum number to retrieve, nullable
 	 *
-	 * @return
+	 * @return the same TinyQuery instance
 	 *
 	 * @see javax.persistence.Query#setFirstResult(int)
 	 * @see javax.persistence.Query#setMaxResults(int)
@@ -570,25 +616,26 @@ public class TinyQuery<T> {
 	public TinyQuery<T> page(Integer page, Integer numberPerPage) {
 
 		if(page != null && numberPerPage != null) {
-			startRow = (page - 1) * numberPerPage;
-			maxRow = numberPerPage;
-			this.page = page;
+			this.pageNumber = page;
 			this.numberPerPage = numberPerPage;
 			this.paged = true;
+
+			this.startRow = (page - 1) * numberPerPage;
+			this.maxRow = numberPerPage;
 		}
 		return this;
 	}
 
 	/**
-	 * Limit the number of the results based on row number. Null parameters will be ignored
-	 * quietly.
+	 * Limit the number of the results based on rows.
+	 * Null parameters will be ignored quietly.
 	 *
 	 * @param startRow
-	 * 		position of the first result, numbered from 0, nullable
+	 * 		position of the first row, numbered from 0, nullable
 	 * @param maxRow
 	 * 		maximum number to retrieve, nullable
 	 *
-	 * @return a predicateList of the results
+	 * @return the same TinyQuery instance
 	 *
 	 * @see javax.persistence.Query#setFirstResult(int)
 	 * @see javax.persistence.Query#setMaxResults(int)
@@ -598,6 +645,7 @@ public class TinyQuery<T> {
 		if(startRow != null && maxRow != null) {
 			this.startRow = startRow;
 			this.maxRow = maxRow;
+			this.paged = false;
 		}
 		return this;
 	}
@@ -617,14 +665,19 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * @return wrapped Page object.
+	 * Execute the SELECT statement and return the results wrapped in a Page object.
+	 * Only available after invoking <code>page()</code>.
+	 *
+	 * @return results wrapped in a Page object.
+	 *
+	 * @see org.triiskelion.tinyspring.viewmodel.Page
 	 */
 	public Page<T> getPagedResult() {
 
 		if(paged) {
 			long total = count();
 			List<T> result = getResultList();
-			return new Page<>(result, page, numberPerPage, total);
+			return new Page<>(result, pageNumber, numberPerPage, total);
 		} else {
 			throw new IllegalStateException("Query is not paged. call page() first.");
 		}
@@ -632,10 +685,10 @@ public class TinyQuery<T> {
 
 	/**
 	 * Execute a SELECT query and return the query results as an untyped List.
-	 * This method is used to retrieve result other than entity objects
+	 * This method is used to retrieve array result other than entity objects
 	 * like aggregated value or specified columns.
 	 *
-	 * @return the untyped result list
+	 * @return a list of the results untyped (Object array)
 	 */
 	public List getUntypedResultList() {
 
@@ -667,30 +720,42 @@ public class TinyQuery<T> {
 	protected Query createQuery(boolean count) {
 
 		StringBuilder queryString = new StringBuilder();
+		if(jpqlExp.length() > 0) {
+			if(count) {
+				int pos = jpqlExp.toString().toLowerCase().indexOf("where");
+				if(pos == -1) {
+					pos = jpqlExp.length();
+				}
+				jpqlExp.replace(0, pos, String.format("SELECT count(%s) FROM %s %s ",
+						tableAlias, entityClass.getCanonicalName(), tableAlias));
+			}
+			queryString.append(jpqlExp);
 
-
-		if(count) {
-			queryString.append(
-					String.format("SELECT count(%s) FROM %s %s",
-							tableAlias, entityClass.getCanonicalName(), tableAlias));
 		} else {
-			queryString.append(selectClause);
-		}
-		if(distinct) {
-			//insert DISTINCT after SELECT
-			queryString.insert(6, " DISTINCT ");
-		}
 
-		queryString.append(joinClause);
-		queryString.append(whereClause);
-		queryString.append(orderByClause);
-		queryString.append(groupByClause);
+			if(count) {
+				queryString.append(
+						String.format("SELECT count(%s) FROM %s %s",
+								tableAlias, entityClass.getCanonicalName(), tableAlias));
+			} else {
+				queryString.append(selectClause);
+			}
+			if(distinct) {
+				//insert DISTINCT after SELECT
+				queryString.insert(6, " DISTINCT ");
+			}
+
+			queryString.append(joinClause);
+			queryString.append(whereClause);
+			queryString.append(orderByClause);
+			queryString.append(groupByClause);
+		}
 		if(showJpql) {
 			log.info("Query built: " + queryString);
 		}
 		Query query = entityManager.createQuery(queryString.toString());
 
-
+		// apply parameters
 		for(int key : positionalParameters.keySet()) {
 			query.setParameter(key, positionalParameters.get(key));
 		}
@@ -718,9 +783,8 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Format recursively a predicate and all its descendants into jpql expression and inject
-	 * values
-	 * of the predicate into query
+	 * Format recursively a predicate and all its descendants into JPQL expression and inject
+	 * values of the predicate into query
 	 *
 	 * @param predicate
 	 * 		the TinyPredicate object to parse
@@ -763,8 +827,9 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Check if predicates are all valid and throw an IllegalArguemntException
-	 * if ignoreNullParameter is set to TRUE.
+	 * Check if predicates are all valid.
+	 * For invalid predicates if ignoreNullParameter is set to TRUE, an IllegalArgumentException
+	 * will be thrown otherwise they will be ignored silently.
 	 *
 	 * @param predicates
 	 */
@@ -774,7 +839,7 @@ public class TinyQuery<T> {
 			for(TinyPredicate p : predicates) {
 				if(!p.isValid) {
 					throw new IllegalArgumentException("Predicate for field:" + p.column + " is " +
-							"invalid. Check values");
+							"invalid.");
 				}
 			}
 		}

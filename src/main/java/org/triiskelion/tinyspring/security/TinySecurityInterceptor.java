@@ -130,6 +130,7 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 				request.setAttribute("notLogin", true);
 				RequestDispatcher rd = request.getRequestDispatcher(accessDeniedUrl);
 				rd.forward(request, response);
+				return;
 			} else {
 
 				String key = annotation.requirePrivilege();

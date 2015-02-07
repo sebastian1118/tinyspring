@@ -4,24 +4,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Page is designed to list of result as long as the result's pagination information<br>
- * User: Sebastian MA
- * Date: July 03, 2014
- * Time: 15:52
+ * Page is a wrapper used to hold a list of pojo as long as the pagination
+ * information<br>
+ *
+ * @author Sebastian MA
  */
 public class Page<T> {
 
-	private long page;
+	private final long page;
 
-	private long max;
+	private final long max;
 
-	private long total;
+	private final long total;
 
-	private long totalPage;
+	private final long totalPage;
 
-	private long dataSize;
+	private final long dataSize;
 
-	private List<T> data;
+	private final List<T> data;
 
 	/**
 	 * @param data
@@ -43,48 +43,106 @@ public class Page<T> {
 		this.dataSize = data != null ? data.size() : 0;
 	}
 
+	/**
+	 * Total page numbers.
+	 *
+	 * @return
+	 */
 	public long getTotalPage() {
 
 		return totalPage;
 	}
 
-
+	/**
+	 * Actual object count in this page.
+	 *
+	 * @return
+	 */
 	public long getDataSize() {
 
 		return dataSize;
 	}
 
 
+	/**
+	 * Current page number.
+	 *
+	 * @return
+	 */
 	public long getPage() {
 
 		return page;
 	}
 
 
+	/**
+	 * Maximum objects per page.
+	 *
+	 * @return
+	 */
 	public long getMax() {
 
 		return max;
 	}
 
 
+	/**
+	 * Total object count in the set.
+	 *
+	 * @return
+	 */
 	public long getTotal() {
 
 		return total;
 	}
 
 
+	/**
+	 * Retrieve the list of the object current page holds.
+	 *
+	 * @return
+	 */
 	public List<T> getData() {
 
-		return data;
+		return new ArrayList<>(data);
 	}
 
+	/**
+	 * This method is used to map the objects in this page to another model.
+	 * It's usually used to transform  database entities to view models.
+	 *
+	 * @param mapper
+	 * @param <A>
+	 * 		the model to map to.
+	 *
+	 * @return the mapped Page instance
+	 */
 	public <A> Page<A> map(Class<A> clazz, Mapper<T, A> mapper) {
 
 		List<A> newData = new ArrayList<>();
 		for(T t : getData()) {
 			newData.add(mapper.map(t));
 		}
-		return new Page<A>(newData, getPage(), getMax(), getTotal());
+		return new Page<>(newData, getPage(), getMax(), getTotal());
+	}
+
+	/**
+	 * This method is used to map the objects in this page to another model.
+	 * It's usually used to transform  database entities to view models.
+	 *
+	 * @param mapper
+	 * @param <A>
+	 * 		the model to map to.
+	 *
+	 * @return the mapped Page instance
+	 */
+	public <A> Page<A> map(Mapper<T, A> mapper) {
+
+		List<A> newData = new ArrayList<>();
+		for(T t : getData()) {
+			newData.add(mapper.map(t));
+		}
+		return new Page<>(newData, getPage(), getMax(), getTotal());
 	}
 
 }
