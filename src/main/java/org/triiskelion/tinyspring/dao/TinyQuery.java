@@ -11,6 +11,8 @@ import javax.persistence.Query;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 /**
@@ -233,7 +235,6 @@ public class TinyQuery<T> {
 
 		return this;
 	}
-
 
 	/**
 	 * Select specific columns from the entity class managed by the query. Exclusive to delete()
@@ -722,21 +723,38 @@ public class TinyQuery<T> {
 		StringBuilder queryString = new StringBuilder();
 		if(jpqlExp.length() > 0) {
 			if(count) {
-				int pos = jpqlExp.toString().toLowerCase().indexOf("where");
-				if(pos == -1) {
-					pos = jpqlExp.length();
+				Pattern p = Pattern.compile("select.*from", Pattern.CASE_INSENSITIVE | Pattern
+						.UNICODE_CASE);
+				Matcher m = p.matcher(jpqlExp.toString());
+				if(m.find()) {
+					String content = m.group().substring(7, m.group().length() - 5);
+					queryString.append(
+							jpqlExp.toString().replaceFirst(" " + content + " ", " count(" +
+									content
+									+ ") "));
+				} else {
+					throw new IllegalArgumentException("count() failed. SELECT.*FROM not matched");
 				}
-				jpqlExp.replace(0, pos, String.format("SELECT count(%s) FROM %s %s ",
-						tableAlias, entityClass.getCanonicalName(), tableAlias));
+			} else {
+				queryString.append(jpqlExp);
 			}
-			queryString.append(jpqlExp);
-
 		} else {
 
 			if(count) {
-				queryString.append(
-						String.format("SELECT count(%s) FROM %s %s",
-								tableAlias, entityClass.getCanonicalName(), tableAlias));
+
+				Pattern p = Pattern.compile("select.*from", Pattern.CASE_INSENSITIVE | Pattern
+						.UNICODE_CASE);
+				Matcher m = p.matcher(selectClause.toString());
+				if(m.find()) {
+					String content = m.group().substring(7, m.group().length() - 5);
+					queryString.append(
+							selectClause.toString().replaceFirst(" " + content + " ", " count(" +
+									content
+									+ ") "));
+				} else {
+					throw new IllegalArgumentException("count() failed. SELECT.*FROM not matched");
+				}
+
 			} else {
 				queryString.append(selectClause);
 			}

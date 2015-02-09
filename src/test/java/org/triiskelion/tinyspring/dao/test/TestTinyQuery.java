@@ -227,17 +227,19 @@ public class TestTinyQuery {
 		assertEquals("alice", result.get(0).getName());
 		assertEquals("beatrice", result.get(1).getName());
 
-//		query = new TinyQuery<>(entityManager, User.class, true);
-//		Page<User> page
-//				= query.query("SELECT m FROM User m WHERE m.name<>:name")
-//				       .param("name", "ellen")
-//				       .page(2, 3)
-//				       .getPagedResult();
-//
-//		assertEquals(1, page.getDataSize());
-//		assertEquals("daisy", page.getData().get(0).getName());
-//		assertEquals(2, page.getTotalPage());
-//		assertEquals(4, page.getTotal());
+
+		// raw query with pagination
+		query = new TinyQuery<>(entityManager, User.class, true);
+		Page<User> page
+				= query.query("Select E FROM User E WHERE E.name<>:name")
+				       .param("name", "ellen")
+				       .page(2, 3)
+				       .getPagedResult();
+
+		assertEquals(1, page.getDataSize());
+		assertEquals("daisy", page.getData().get(0).getName());
+		assertEquals(2, page.getTotalPage());
+		assertEquals(4, page.getTotal());
 
 
 	}

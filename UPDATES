@@ -1,2 +1,0 @@
-0.7.0:
-	security module: add mechanism to authenticate a request statelessly.
