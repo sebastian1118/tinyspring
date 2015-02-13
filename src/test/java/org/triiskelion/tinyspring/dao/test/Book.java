@@ -14,13 +14,14 @@ public class Book {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
+	@Column
 	private int id;
 
 	@Column
 	private String title;
 
 	@ManyToOne
-	@JoinColumn(referencedColumnName = "id")
+	@JoinColumn(referencedColumnName = "id", nullable = true)
 	private User user;
 
 	public int getId() {

@@ -6,7 +6,8 @@
     <persistence-unit name="jpa-hsqldb" transaction-type="RESOURCE_LOCAL">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
-        <!--<class>com.eggcharge.nexus.dispatcher.persistence.domain.DeviceState</class>-->
+        <class>org.triiskelion.tinyspring.dao.test.Book</class>
+        <class>org.triiskelion.tinyspring.dao.test.User</class>
         <properties>
             <property name="javax.persistence.jdbc.driver" value="org.hsqldb.jdbcDriver" />
             <property name="javax.persistence.jdbc.url" value="jdbc:hsqldb:mem:." />
@@ -15,7 +16,7 @@
             <property name="hibernate.show_sql" value="true" />
             <property name="hibernate.dialect" value="org.hibernate.dialect.HSQLDialect" />
             <property name="hibernate.connection.shutdown" value="true" />
-            <property name="hibernate.hbm2ddl.auto" value="create-drop" />
+            <property name="hibernate.hbm2ddl.auto" value="create" />
 
         </properties>
     </persistence-unit>

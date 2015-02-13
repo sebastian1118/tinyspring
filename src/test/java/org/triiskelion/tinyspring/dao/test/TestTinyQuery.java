@@ -1,8 +1,9 @@
 package org.triiskelion.tinyspring.dao.test;
 
-import org.jboss.logging.Logger;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.triiskelion.tinyspring.dao.OrderType;
 import org.triiskelion.tinyspring.dao.TinyQuery;
 import org.triiskelion.tinyspring.viewmodel.Page;
@@ -25,7 +26,7 @@ import static org.triiskelion.tinyspring.dao.TinyPredicate.*;
  */
 public class TestTinyQuery {
 
-	Logger log = Logger.getLogger(TestTinyQuery.class);
+	Logger log = LoggerFactory.getLogger(TestTinyQuery.class);
 
 	EntityManager entityManager;
 
@@ -38,6 +39,12 @@ public class TestTinyQuery {
 		entityManager = emFactory.createEntityManager();
 		entityManager.getTransaction().begin();
 
+		for(String name : names) {
+			Person entity = new Person();
+			entity.setName(name);
+			entityManager.persist(entity);
+		}
+
 		List<User> users = new ArrayList<>();
 		for(int i = 0; i < names.length; i++) {
 			User entity = new User();
@@ -48,10 +55,18 @@ public class TestTinyQuery {
 			users.add(entity);
 		}
 
-		//		Book book = new Book();
-		//		book.setTitle("Childhood's End");
-		//		book.setUser(users.get(0));
-		//		entityManager.persist(book);
+		Book book = new Book();
+		entityManager.persist(book);
+		book.setTitle("Childhood's End");
+		book.setUser(users.get(0));
+		users.get(0).getBooks().add(book);
+
+		book = new Book();
+		entityManager.persist(book);
+		book.setTitle("Harry Porter");
+		book.setUser(users.get(0));
+		users.get(0).getBooks().add(book);
+
 
 		entityManager.getTransaction().commit();
 	}
@@ -64,7 +79,8 @@ public class TestTinyQuery {
 
 		// where clause will be ignored thus query is as same as count all.
 		long result = query.ignoreNull(true).select()
-		                   .where(equal("name", null))
+		                   .where(isNotNull("name"))
+		                   .and(equal("name", null))
 		                   .count();
 		assertEquals(names.length, result);
 
@@ -78,8 +94,8 @@ public class TestTinyQuery {
 	@Test
 	public void testDelete() {
 
-		TinyQuery<User> query;
-		query = new TinyQuery<>(entityManager, User.class, true);
+		TinyQuery<Person> query;
+		query = new TinyQuery<>(entityManager, Person.class, true);
 
 		entityManager.getTransaction().begin();
 		long result = query.delete()
@@ -88,45 +104,83 @@ public class TestTinyQuery {
 		entityManager.getTransaction().commit();
 		assertEquals(1, result);
 
-		query = new TinyQuery<>(entityManager, User.class, true);
+		query = new TinyQuery<>(entityManager, Person.class, true);
 		assertTrue(query.ignoreNull(false).select()
 		                .where(equal("name", "alice"))
 		                .hasNoResult());
 	}
 
 	@Test
-	public void testSelect() {
+	public void testSelectColumns() {
 
-		TinyQuery<User> query;
-		query = new TinyQuery<>(entityManager, User.class, true);
-
-		List<Object[]> result = query.select("name, sort")
-		                             .orderBy("name", OrderType.ASC)
+		TinyQuery<Book> query;
+		query = new TinyQuery<>(entityManager, Book.class, true);
+		List<Object[]> result = query.select("id", "title", "u.id")
+		                             .join(User.class, "user", "u")
+		                             .where(isNotNull("title"))
 		                             .getUntypedResultList();
 
-		assertEquals(names.length, result.size());
-		assertEquals(2, result.get(0).length);
-		assertEquals("alice", result.get(0)[0]);
-		assertEquals(0, result.get(0)[1]);
+		assertEquals(2, result.size());
+	}
+
+	@Test
+	public void testSelect() {
+
+		TinyQuery<Book> query;
+		query = new TinyQuery<>(entityManager, Book.class, true);
+		List<Book> result = query.select()
+		                         .where(equal("title", "Childhood's End"))
+		                         .getResultList();
+
+		assertEquals(1, result.size());
+		assertEquals("Childhood's End", result.get(0).getTitle());
+	}
+
+	@Test
+	public void testSelectJoin() {
+
+		TinyQuery<Book> query;
+		query = new TinyQuery<>(entityManager, Book.class, true);
+		List<Book> result = query.select().join(User.class, "user", "u")
+		                         .where(equal("u", "name", "alice"))
+		                         .getResultList();
+
+		assertEquals(2, result.size());
+		assertEquals("alice", result.get(0).getUser().getName());
+	}
+
+	@Test
+	public void testSelectFromJoin() {
+
+		TinyQuery<Book> query;
+		query = new TinyQuery<>(entityManager, Book.class, true);
+		List<User> result = query.select(User.class)
+		                         .from(Book.class, "b")
+		                         .join(User.class, "user", "u")
+		                         .where(equal("b", "title", "Childhood's End"))
+		                         .getResultList();
+
+		assertEquals(1, result.size());
+		assertEquals("alice", result.get(0).getName());
 	}
 
 	@Test
 	public void testDistinct() {
 
-		/*TinyQuery<DummyEntity> query;
-		query = new TinyQuery<>(entityManager, DummyEntity.class, true);
+		TinyQuery<User> query;
+		query = new TinyQuery<>(entityManager, User.class, true);
 
-		List result = query.select().distinct()
+		List result = query.select("name").distinct()
 		                   .where(equal("name", "ellen"))
 		                   .getResultList();
-		Assert.assertEquals(1, result.size());
+		assertEquals(1, result.size());
 
-		query = new TinyQuery<>(entityManager, DummyEntity.class, true);
-		result = query.select()
+		query = new TinyQuery<>(entityManager, User.class, true);
+		result = query.select("name")
 		              .where(equal("name", "ellen"))
 		              .getResultList();
 
-		Assert.assertEquals(2, result.size());*/
+		assertEquals(2, result.size());
 	}
 
 	@Test
@@ -135,7 +189,7 @@ public class TestTinyQuery {
 		TinyQuery<User> query;
 		query = new TinyQuery<>(entityManager, User.class, true);
 
-		long result = query.select().count();
+		long result = query.select().where(isNotNull("name")).count();
 		assertEquals(names.length, result);
 	}
 
@@ -174,6 +228,7 @@ public class TestTinyQuery {
 		TinyQuery<User> query;
 		query = new TinyQuery<>(entityManager, User.class, true);
 		List<User> result = query.select()
+		                         .where(isNotNull("name"))
 		                         .orderBy("name", OrderType.DESC)
 		                         .orderBy("sort", OrderType.ASC)
 		                         .getResultList();
@@ -184,14 +239,28 @@ public class TestTinyQuery {
 	@Test
 	public void testGetPagedResult() {
 
-		TinyQuery<User> query = new TinyQuery<>(entityManager, User.class, true);
+		TinyQuery<Person> query = new TinyQuery<>(entityManager, Person.class, true);
 
-		Page<User> result = query.select().page(2, 2).getPagedResult();
+		Page<Person> result = query.select().page(2, 2).getPagedResult();
 		assertEquals(names.length, result.getTotal());
 		assertEquals(names.length / 2 + (names.length % 2 == 0 ? 0 : 1), result.getTotalPage());
 		assertEquals(2, result.getPage());
 		assertEquals(2, result.getMax());
 		assertEquals(result.getDataSize(), result.getData().size());
+	}
+
+	@Test
+	public void testGetResultList() {
+
+		TinyQuery<User> query = new TinyQuery<>(entityManager, User.class, true);
+
+		List<User> result = query.select().where(isNotNull("name")).getResultList();
+		assertEquals(6, result.size());
+
+		query = new TinyQuery<>(entityManager, User.class, true);
+		List<Book> books = query.query("SELECT b FROM Book b WHERE b.user IS NOT NULL")
+		                        .getResultList(Book.class);
+		assertEquals(2, books.size());
 	}
 
 	@Test
@@ -215,10 +284,10 @@ public class TestTinyQuery {
 	@Test
 	public void testQuery() {
 
-		TinyQuery<User> query = new TinyQuery<>(entityManager, User.class, true);
+		TinyQuery<Person> query = new TinyQuery<>(entityManager, Person.class, true);
 
-		List<User> result
-				= query.query("SELECT m FROM User m WHERE m.name=:name OR m.name=?1")
+		List<Person> result
+				= query.query("SELECT m FROM Person m WHERE m.name=:name OR m.name=?1")
 				       .param(1, "alice")
 				       .param("name", "beatrice")
 				       .getResultList();
@@ -227,20 +296,29 @@ public class TestTinyQuery {
 		assertEquals("alice", result.get(0).getName());
 		assertEquals("beatrice", result.get(1).getName());
 
+		// partial query
+		query = new TinyQuery<>(entityManager, Person.class, true);
+		List<Person> result1
+				= query.query("SELECT m FROM Person m")
+				       .where(equal("m", "name", "alice"))
+				       .or(equal("m", "name", "beatrice"))
+				       .getResultList();
+		assertEquals(2, result1.size());
+		assertEquals("alice", result1.get(0).getName());
+		assertEquals("beatrice", result1.get(1).getName());
+
 
 		// raw query with pagination
-		query = new TinyQuery<>(entityManager, User.class, true);
-		Page<User> page
-				= query.query("Select E FROM User E WHERE E.name<>:name")
-				       .param("name", "ellen")
-				       .page(2, 3)
-				       .getPagedResult();
+		query = new TinyQuery<>(entityManager, Person.class, true);
+		Page<Person> page = query.query("Select E FROM Person E WHERE E.name<>:name")
+		                         .param("name", "ellen")
+		                         .page(2, 3)
+		                         .getPagedResult();
 
 		assertEquals(1, page.getDataSize());
 		assertEquals("daisy", page.getData().get(0).getName());
 		assertEquals(2, page.getTotalPage());
 		assertEquals(4, page.getTotal());
-
 
 	}
 
@@ -271,4 +349,6 @@ public class TestTinyQuery {
 		assertEquals(2, result.size());
 		assertEquals("carol", result.get(0).getName());
 	}
+
+
 }

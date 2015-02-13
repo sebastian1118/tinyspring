@@ -70,7 +70,7 @@ public class TinyPredicate {
 	//		empty = !isValid;
 	//
 	//		if(StringUtils.isBlank(alias)) {
-	//			alias = TinyQuery.tableAlias;
+	//			alias = TinyQuery.TABLE_ALIAS;
 	//		}
 	//
 	//		this.operator = operator;
@@ -92,7 +92,7 @@ public class TinyPredicate {
 		empty = !isValid;
 
 		if(StringUtils.isBlank(alias)) {
-			alias = TinyQuery.tableAlias;
+			alias = TinyQuery.TABLE_ALIAS;
 		}
 
 		this.operator = operator;

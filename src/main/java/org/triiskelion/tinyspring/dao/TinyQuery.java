@@ -17,16 +17,26 @@ import java.util.regex.Pattern;
 
 /**
  * A tiny flexible JPQL query builder
+ * <p/>
+ * <ul>
+ * <li>select()</li>
+ * <li>select().from()</li>
+ * <li>select().join(clazz,col,alias)</li>
+ * <li>select().from(clazz,alias).join(clazz,col,alias)</li>
+ * </ul>
  *
+ * @author tian MA
  * @link https://github.com/sebastian1118/tinyspring
  * <p/>
- * User: Sebastian MA
- * Date: June 22, 2014
- * Time: 18:33
  */
 public class TinyQuery<T> {
 
 	protected static Logger log = LoggerFactory.getLogger(TinyQuery.class);
+
+	/**
+	 * Table alias for the query
+	 */
+	public static final String TABLE_ALIAS = "_this";
 
 	protected Class<T> entityClass;
 
@@ -37,15 +47,25 @@ public class TinyQuery<T> {
 	 */
 	protected StringBuilder jpqlExp = new StringBuilder();
 
-	/**
-	 * The SELECT clause
-	 */
-	protected StringBuilder selectClause = new StringBuilder();
+
+	// select and join clause
+	protected Class selectClass;
+
+	private TinyEntity fromEntity;
+
+	private TinyEntity joinEntity;
+
+	private String joinColumn;
+
+	HashMap<Class, String> aliasMap = new HashMap<>();
+
+	String[] selectedColumns;
+	// select and join clause
 
 	/**
-	 * The JOIN clause
+	 * The DELETE clause
 	 */
-	protected StringBuilder joinClause = new StringBuilder();
+	protected StringBuilder deleteClause = new StringBuilder();
 
 	/**
 	 * The WHERE clause
@@ -62,10 +82,6 @@ public class TinyQuery<T> {
 	 */
 	protected StringBuilder groupByClause = new StringBuilder();
 
-	/**
-	 * Table alias for the query
-	 */
-	public static String tableAlias = "_this";
 
 	protected boolean distinct = false;
 
@@ -98,7 +114,6 @@ public class TinyQuery<T> {
 	 */
 	protected int maxRow = -1;
 
-
 	/**
 	 * Start page numbered from 1.<br>
 	 * It is used for page based pagination
@@ -130,8 +145,7 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery(EntityManager entityManager, Class<T> entityClass) {
 
-		this.entityManager = entityManager;
-		this.entityClass = entityClass;
+		this(entityManager, entityClass, false);
 	}
 
 	/**
@@ -209,12 +223,8 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> delete() {
 
-		if(selectClause.length() > 0) {
-			throw new IllegalStateException("SELECT already defined");
-		}
-
-		selectClause.append(String.format("DELETE FROM %s %s",
-				entityClass.getCanonicalName(), tableAlias));
+		deleteClause.append(
+				String.format("DELETE FROM %s %s", entityClass.getCanonicalName(), TABLE_ALIAS));
 
 		return this;
 	}
@@ -227,13 +237,13 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> select() {
 
-		if(selectClause.length() > 0) {
-			throw new IllegalStateException("SELECT already defined");
-		}
-		selectClause.append(String.format("SELECT %s FROM %s %s",
-				tableAlias, entityClass.getCanonicalName(), tableAlias));
-
+		selectClass = entityClass;
 		return this;
+	}
+
+	public <N> TinyQuery<N> select(Class<N> clazz) {
+
+		return new TinyQuery<>(entityManager, clazz, showJpql).select();
 	}
 
 	/**
@@ -244,42 +254,13 @@ public class TinyQuery<T> {
 	 * @return the same TinyQuery instance
 	 */
 	//todo select from different table is broken!
-	public TinyQuery<T> select(String... cols) {
+	public TinyQuery<T> select(String... columns) {
 
-		if(selectClause.length() > 0) {
-			throw new IllegalStateException("SELECT already defined");
-		}
-
-		selectClause.append("SELECT ");
-		ArrayList<String> list = new ArrayList<>();
-		StringBuilder buffer = new StringBuilder();
-		for(String s : cols) {
-			if(!s.contains(".")) {
-				buffer.append(tableAlias).append(".");
-			}
-			buffer.append(s).append(" ");
-			list.add(buffer.toString());
-			buffer.delete(0, buffer.length());
-		}
-		selectClause.append(StringUtils.join(list, ","));
-		selectClause.append(String.format(" FROM %s %s", entityClass.getCanonicalName(),
-				tableAlias));
-
+		select();
+		this.selectedColumns = columns;
 		return this;
 	}
 
-	/**
-	 * Distinguish the result. This will add DISTINCT keyword to the query. Can be invoked
-	 * anywhere before retrieving the result.
-	 *
-	 * @return the same TinyQuery instance
-	 */
-	public TinyQuery<T> distinct() {
-
-		distinct = true;
-
-		return this;
-	}
 
 	/**
 	 * Add additional entity to FROM clause besides the entity class managed by the query.
@@ -294,13 +275,12 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> from(Class entityClass, String alias) {
 
-		if(!selectClause.toString().toUpperCase().contains("SELECT")) {
-			throw new IllegalStateException("from() must be invoked after select()");
-		}
 
-		selectClause.append(String.format(",%s %s", entityClass.getCanonicalName(), alias));
+		fromEntity = new TinyEntity(entityClass, alias);
+		aliasMap.put(entityClass, alias);
 		return this;
 	}
+
 
 	/**
 	 * Add additional entity to FROM clause besides the entity  which the invoking DAO object
@@ -313,10 +293,24 @@ public class TinyQuery<T> {
 	 *
 	 * @return the same TinyQuery instance
 	 */
-	public TinyQuery<T> join(String column, String alias) {
+	public TinyQuery<T> join(Class entityClass, String column, String alias) {
 
-		joinClause.append(
-				String.format(" JOIN %s.%s %s ", tableAlias, column, alias));
+		joinEntity = new TinyEntity(entityClass, alias);
+		joinColumn = column;
+		aliasMap.put(entityClass, alias);
+		return this;
+	}
+
+	/**
+	 * Distinguish the result. This will add DISTINCT keyword to the query. Can be invoked
+	 * anywhere before retrieving the result.
+	 *
+	 * @return the same TinyQuery instance
+	 */
+	public TinyQuery<T> distinct() {
+
+		distinct = true;
+
 		return this;
 	}
 
@@ -420,7 +414,7 @@ public class TinyQuery<T> {
 			orderByClause.append(",");
 		}
 		if(alias == null) {
-			orderByClause.append(tableAlias);
+			orderByClause.append(TABLE_ALIAS);
 		} else {
 			orderByClause.append(alias);
 		}
@@ -461,7 +455,7 @@ public class TinyQuery<T> {
 			groupByClause.append(",");
 		}
 		if(alias == null) {
-			groupByClause.append(tableAlias);
+			groupByClause.append(TABLE_ALIAS);
 		} else {
 			groupByClause.append(alias);
 		}
@@ -666,6 +660,21 @@ public class TinyQuery<T> {
 	}
 
 	/**
+	 * Execute a SELECT query and return the query results as an List.<br>
+	 * The result will be cast into the type given bpy parameter.
+	 *
+	 * @return the typed result list
+	 */
+	public <R> List<R> getResultList(Class<R> clazz) {
+
+		Query query = createQuery();
+		if(startRow >= 0 && maxRow >= 0) {
+			query.setFirstResult(startRow).setMaxResults(maxRow);
+		}
+		return (List<R>) query.getResultList();
+	}
+
+	/**
 	 * Execute the SELECT statement and return the results wrapped in a Page object.
 	 * Only available after invoking <code>page()</code>.
 	 *
@@ -685,13 +694,36 @@ public class TinyQuery<T> {
 	}
 
 	/**
+	 * Execute the SELECT statement and return the results wrapped in a Page object.
+	 * Only available after invoking <code>page()</code>.<br>
+	 * The result will be cast into the type given by parameter.
+	 *
+	 * @param clazz
+	 * 		class to cast
+	 *
+	 * @return results wrapped in a Page object.
+	 *
+	 * @see org.triiskelion.tinyspring.viewmodel.Page
+	 */
+	public <R> Page<R> getPagedResult(Class<R> clazz) {
+
+		if(paged) {
+			long total = count();
+			List<R> result = getResultList(clazz);
+			return new Page<>(result, pageNumber, numberPerPage, total);
+		} else {
+			throw new IllegalStateException("Query is not paged. call page() first.");
+		}
+	}
+
+	/**
 	 * Execute a SELECT query and return the query results as an untyped List.
 	 * This method is used to retrieve array result other than entity objects
 	 * like aggregated value or specified columns.
 	 *
 	 * @return a list of the results untyped (Object array)
 	 */
-	public List getUntypedResultList() {
+	public List<Object[]> getUntypedResultList() {
 
 		Query query = createQuery();
 		if(startRow >= 0 && maxRow >= 0) {
@@ -721,66 +753,123 @@ public class TinyQuery<T> {
 	protected Query createQuery(boolean count) {
 
 		StringBuilder queryString = new StringBuilder();
-		if(jpqlExp.length() > 0) {
-			if(count) {
-				Pattern p = Pattern.compile("select.*from", Pattern.CASE_INSENSITIVE | Pattern
-						.UNICODE_CASE);
-				Matcher m = p.matcher(jpqlExp.toString());
-				if(m.find()) {
-					String content = m.group().substring(7, m.group().length() - 5);
-					queryString.append(
-							jpqlExp.toString().replaceFirst(" " + content + " ", " count(" +
-									content
-									+ ") "));
-				} else {
-					throw new IllegalArgumentException("count() failed. SELECT.*FROM not matched");
-				}
-			} else {
-				queryString.append(jpqlExp);
-			}
+
+		if(deleteClause.length() > 0) {
+			queryString.append(deleteClause);
+
 		} else {
 
-			if(count) {
-
-				Pattern p = Pattern.compile("select.*from", Pattern.CASE_INSENSITIVE | Pattern
-						.UNICODE_CASE);
-				Matcher m = p.matcher(selectClause.toString());
-				if(m.find()) {
-					String content = m.group().substring(7, m.group().length() - 5);
-					queryString.append(
-							selectClause.toString().replaceFirst(" " + content + " ", " count(" +
-									content
-									+ ") "));
-				} else {
-					throw new IllegalArgumentException("count() failed. SELECT.*FROM not matched");
-				}
-
-			} else {
-				queryString.append(selectClause);
-			}
-			if(distinct) {
-				//insert DISTINCT after SELECT
-				queryString.insert(6, " DISTINCT ");
-			}
-
-			queryString.append(joinClause);
-			queryString.append(whereClause);
-			queryString.append(orderByClause);
-			queryString.append(groupByClause);
+			queryString.append(buildSelectClause(count));
+			queryString.append(buildJoinClause());
 		}
+
+		queryString.append(whereClause);
+		queryString.append(orderByClause);
+		queryString.append(groupByClause);
+
 		if(showJpql) {
 			log.info("Query built: " + queryString);
 		}
+
 		Query query = entityManager.createQuery(queryString.toString());
 
 		// apply parameters
 		for(int key : positionalParameters.keySet()) {
 			query.setParameter(key, positionalParameters.get(key));
 		}
+
 		for(String key : namedParameters.keySet()) {
 			query.setParameter(key, namedParameters.get(key));
 		}
+
 		return query;
+	}
+
+	protected String buildJoinClause() {
+
+		if(jpqlExp.length() <= 0) {
+			StringBuilder joinClause = new StringBuilder();
+			if(joinEntity != null) {
+				joinClause.append(" JOIN ");
+				joinClause.append(String.format("%s.%s %s",
+						fromEntity == null ? TABLE_ALIAS : fromEntity.alias,
+						joinColumn, joinEntity.alias));
+			}
+			return joinClause.toString();
+		} else {
+			return "";
+		}
+	}
+
+	protected String buildSelectClause(boolean count) {
+
+		if(jpqlExp.length() <= 0) {
+
+			StringBuilder selectClause = new StringBuilder();
+			selectClause.append("SELECT ");
+			if(distinct) {
+				selectClause.append(" DISTINCT ");
+			}
+
+			String selectAlias;
+			if(selectedColumns != null) {
+				ArrayList<String> list = new ArrayList<>();
+				for(String col : selectedColumns) {
+					String[] tokens = col.split("\\.");
+					if(tokens.length == 1) {
+						list.add(TABLE_ALIAS + "." + col);
+
+					} else {// user.id  m.user.id
+						if(aliasMap.values().contains(tokens[0])) { //m.user.id
+							list.add(col);
+						} else {
+							list.add(TABLE_ALIAS + "." + col);
+						}
+					}
+
+				}
+				selectAlias = StringUtils.join(list, ",");
+
+			} else {
+				selectAlias = aliasMap.get(selectClass);
+				if(selectAlias == null) {
+					selectAlias = TABLE_ALIAS;
+				}
+			}
+
+			if(count) {
+				selectClause.append(String.format("count(%s)", selectAlias));
+			} else {
+				selectClause.append(String.format("%s", selectAlias));
+			}
+
+			selectClause.append(" FROM ");
+			if(fromEntity == null)
+				selectClause.append(selectClass.getCanonicalName()).append(" ").append
+						(TABLE_ALIAS);
+			else {
+				selectClause.append(fromEntity.getEntityClass().getCanonicalName())
+				            .append(" ").append(fromEntity.getAlias());
+			}
+
+			return selectClause.toString();
+		} else {
+			if(count) {
+				Pattern p = Pattern.compile("select.*from", Pattern.CASE_INSENSITIVE | Pattern
+						.UNICODE_CASE);
+				Matcher m = p.matcher(jpqlExp.toString());
+				if(m.find()) {
+					String content = m.group().substring(7, m.group().length() - 5);
+					return jpqlExp.toString()
+					              .replaceFirst(" " + content + " ", " count(" + content + ") ");
+				} else {
+					throw new IllegalArgumentException("count() failed. SELECT.*FROM not matched");
+				}
+
+			} else {
+				return jpqlExp.toString();
+			}
+		}
 	}
 
 	/**
@@ -788,12 +877,8 @@ public class TinyQuery<T> {
 	 */
 	public String toString() {
 
-		StringBuilder buffer = new StringBuilder(selectClause);
-		if(distinct) {
-			//insert DISTINCT after SELECT
-			buffer.insert(6, " DISTINCT ");
-		}
-		buffer.append(joinClause);
+		StringBuilder buffer = new StringBuilder(buildSelectClause(false));
+		buffer.append(buildJoinClause());
 		buffer.append(whereClause);
 		buffer.append(orderByClause);
 		buffer.append(groupByClause);
@@ -862,6 +947,7 @@ public class TinyQuery<T> {
 			}
 		}
 	}
+
 	//
 	// END Internal methods
 	////////////////////////////////////////////////////////////////////////////////////////

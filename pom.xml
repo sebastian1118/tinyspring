@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.triiskelion</groupId>
     <artifactId>tinyspring</artifactId>
-    <version>0.8.0-SNAPSHOT</version>
+    <version>0.9.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>TinySpring</name>
     <description>Set of tools for spring-mvc projects</description>
@@ -107,6 +107,7 @@
             <artifactId>guava</artifactId>
             <version>18.0</version>
         </dependency>
+
         <!-- BEGIN JavaEE -->
         <dependency>
             <groupId>org.apache.tomcat</groupId>
@@ -127,24 +128,6 @@
             <scope>provided</scope>
         </dependency>
         <!-- END JavaEE -->
-
-        <!-- BEGIN Apache commons -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.3.2</version>
-        </dependency>
-        <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-            <version>1.9</version>
-        </dependency>
-        <dependency>
-            <groupId>commons-beanutils</groupId>
-            <artifactId>commons-beanutils</artifactId>
-            <version>1.9.1</version>
-        </dependency>
-        <!-- Apache commons -->
 
         <dependency>
             <groupId>joda-time</groupId>
@@ -167,29 +150,29 @@
         <!-- END fastjson -->
 
         <!-- BEGIN Logging -->
-          <dependency>
-              <groupId>org.slf4j</groupId>
-              <artifactId>slf4j-api</artifactId>
-              <version>1.7.7</version>
-          </dependency>
-          <dependency>
-              <groupId>org.apache.logging.log4j.adapters</groupId>
-              <artifactId>log4j-slf4j-impl</artifactId>
-              <version>2.0-beta4</version>
-              <scope>test</scope>
-          </dependency>
-          <dependency>
-              <groupId>org.apache.logging.log4j</groupId>
-              <artifactId>log4j-api</artifactId>
-              <version>2.0-rc1</version>
-              <scope>test</scope>
-          </dependency>
-          <dependency>
-              <groupId>org.apache.logging.log4j</groupId>
-              <artifactId>log4j-core</artifactId>
-              <version>2.0-rc1</version>
-              <scope>test</scope>
-          </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.7</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j.adapters</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>2.0-beta4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>2.0-rc1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.0-rc1</version>
+            <scope>test</scope>
+        </dependency>
         <!-- END Logging -->
 
 

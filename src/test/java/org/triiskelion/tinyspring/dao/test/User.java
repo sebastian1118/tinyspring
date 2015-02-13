@@ -1,6 +1,8 @@
 package org.triiskelion.tinyspring.dao.test;
 
 import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created with IntelliJ IDEA.
@@ -14,6 +16,7 @@ public class User {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
+	@Column
 	private int id;
 
 	@Column
@@ -21,6 +24,19 @@ public class User {
 
 	@Column
 	private Integer sort;
+
+	@OneToMany(mappedBy = "user")
+	List<Book> books = new ArrayList<>();
+
+	public List<Book> getBooks() {
+
+		return books;
+	}
+
+	public void setBooks(List<Book> books) {
+
+		this.books = books;
+	}
 
 	public Integer getSort() {
 
