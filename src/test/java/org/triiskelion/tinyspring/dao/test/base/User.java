@@ -1,4 +1,4 @@
-package org.triiskelion.tinyspring.dao.test;
+package org.triiskelion.tinyspring.dao.test.base;
 
 import javax.persistence.*;
 import java.util.ArrayList;

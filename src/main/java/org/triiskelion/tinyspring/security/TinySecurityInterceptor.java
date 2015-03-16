@@ -142,6 +142,7 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 						//					RequestDispatcher rd = request.getRequestDispatcher
 						// (privilegeDeniedUrl);
 						response.sendRedirect(privilegeDeniedUrl);
+						return;
 					}
 				}
 			}

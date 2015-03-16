@@ -3,6 +3,7 @@ package org.triiskelion.tinyspring.dao;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -375,10 +376,6 @@ public class TinyPredicate {
 	 *
 	 * @return
 	 */
-	//	public static TinyPredicate in(String column, Object... values) {
-	//
-	//		return in(null, column, values);
-	//	}
 	public static TinyPredicate in(String column, List values) {
 
 		return in(null, column, values);
@@ -392,13 +389,19 @@ public class TinyPredicate {
 	 *
 	 * @return
 	 */
-	//	public static TinyPredicate in(String alias, String column, Object... values) {
-	//
-	//		return new TinyPredicate(alias, column, Operator.in, values);
-	//	}
 	public static TinyPredicate in(String alias, String column, List values) {
 
 		return new TinyPredicate(alias, column, Operator.in, values);
+	}
+
+	public static TinyPredicate in(String column, Object... values) {
+
+		return in(column, values);
+	}
+
+	public static TinyPredicate in(String alias, String column, Object... values) {
+
+		return new TinyPredicate(alias, column, Operator.in, Arrays.asList(values));
 	}
 
 

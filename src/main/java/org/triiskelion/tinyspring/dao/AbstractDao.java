@@ -1,24 +1,25 @@
 package org.triiskelion.tinyspring.dao;
 
 import com.google.common.base.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.triiskelion.tinyspring.AbstractSpringBean;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import java.util.List;
 
 /**
- *
  * A generic DAO class which provide essential query methods as long as
  * a query builder to help build jpql queries easier.
+ * <p/>
  *
- * Created with IntelliJ IDEA.
- * User: Sebastian MA
- * Date: February 23, 2014
- * Time: 11:52
+ * @author Sebastian MA
+ *
  */
-public abstract class AbstractDao<T> extends AbstractSpringBean {
+public abstract class AbstractDao<T> {
+
+	protected static final Logger log = LoggerFactory.getLogger(AbstractDao.class);
 
 	@PersistenceContext
 	protected EntityManager entityManager;
@@ -34,6 +35,11 @@ public abstract class AbstractDao<T> extends AbstractSpringBean {
 	protected EntityManager getEntityManager() {
 
 		return entityManager;
+	}
+
+	public void setEntityManager(EntityManager entityManager) {
+
+		this.entityManager = entityManager;
 	}
 
 	/**

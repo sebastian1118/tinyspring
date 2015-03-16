@@ -6,11 +6,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.triiskelion.tinyspring.dao.OrderType;
 import org.triiskelion.tinyspring.dao.TinyQuery;
+import org.triiskelion.tinyspring.dao.test.base.Book;
+import org.triiskelion.tinyspring.dao.test.base.Person;
+import org.triiskelion.tinyspring.dao.test.base.User;
 import org.triiskelion.tinyspring.viewmodel.Page;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
+import javax.persistence.Query;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -70,6 +74,17 @@ public class TestTinyQuery {
 
 		entityManager.getTransaction().commit();
 	}
+
+	@Test
+	public void test() {
+
+		Query query = entityManager.createQuery("SELECT m FROM Person m WHERE m.name=:name");
+		query.setParameter("name", null);
+		List<Person> result = query.getResultList();
+
+		assertEquals(1, result.size());
+	}
+
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testIgnoreNull() {
