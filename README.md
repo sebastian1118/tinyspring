@@ -4,9 +4,9 @@ tinyspring
 
 ### Features:
 
-* Generic DAO class with query builder to create queries more easily.
+* Generic DAO class and JPQL query builder to create queries more easily.
 
-* Utilities to make your MVC code cleaner. (View models, object mapping, etc.)
+* Utilities to make your MVC codes more elegant. (View models, object mapping, etc.)
 
 * (Planned) A minimal security framework to do the authentication and authorization.
 
