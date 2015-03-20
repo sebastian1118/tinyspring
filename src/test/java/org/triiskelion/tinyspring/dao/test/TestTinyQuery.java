@@ -79,10 +79,10 @@ public class TestTinyQuery {
 	public void test() {
 
 		Query query = entityManager.createQuery("SELECT m FROM Person m WHERE m.name=:name");
-		query.setParameter("name", null);
+		query.setParameter("name", null);// same as " m.name is null"
 		List<Person> result = query.getResultList();
 
-		assertEquals(1, result.size());
+		assertEquals(0, result.size());
 	}
 
 
