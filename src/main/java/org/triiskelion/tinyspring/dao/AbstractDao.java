@@ -25,7 +25,7 @@ public abstract class AbstractDao<T> {
 	protected EntityManager entityManager;
 
 	@Value("${tinyspring.dao.showJPQL:false}")
-	Boolean showJpql;
+	Boolean showJpql = false;
 
 	/**
 	 * Override this method to use your own entity manager.
