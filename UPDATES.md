@@ -1,3 +1,7 @@
+## 0.9.1
+* update tinyutils to 0.2.0-SNAPSHOT
+* fix serveral bugs
+
 ## 0.9.0
 * rewrite select() from() join() to make more flexibility
 * select by column names works for multiple tables
