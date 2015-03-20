@@ -1,8 +1,6 @@
 package org.triiskelion.tinyspring.security;
 
 
-import org.triiskelion.tinyspring.AbstractSpringBean;
-
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -13,7 +11,7 @@ import javax.servlet.http.HttpSession;
  * Date: August 11, 2014
  * Time: 14:00
  */
-public abstract class TinyAuthenticator extends AbstractSpringBean {
+public abstract class TinyAuthenticator {
 
 	public static final String SESSION_NAME_USER = "TINY_USER_OBJECT";
 
