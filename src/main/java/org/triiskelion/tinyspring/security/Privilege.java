@@ -11,10 +11,9 @@ import java.util.ArrayList;
 /**
  * @author Sebastian MA
  */
-@Deprecated
-public class PrivilegeService {
+public class Privilege {
 
-	private static final Logger log = LoggerFactory.getLogger(PrivilegeService.class);
+	private static final Logger log = LoggerFactory.getLogger(Privilege.class);
 
 	public static int getPrivilege(PrivilegeSet set, String key) {
 
