@@ -661,7 +661,7 @@ public class TinyQuery<T> {
 
 	/**
 	 * Execute a SELECT query and return the query results as an List.<br>
-	 * The result will be cast into the type given bpy parameter.
+	 * The result will be cast into the type given by parameter.
 	 *
 	 * @return the typed result list
 	 */
@@ -721,9 +721,11 @@ public class TinyQuery<T> {
 	 * This method is used to retrieve array result other than entity objects
 	 * like aggregated value or specified columns.
 	 *
-	 * @return a list of the results untyped (Object array)
+	 * @return a untyped list of the results
+	 *
+	 * @see Query#getResultList()
 	 */
-	public List<Object[]> getUntypedResultList() {
+	public List getUntypedResultList() {
 
 		Query query = createQuery();
 		if(startRow >= 0 && maxRow >= 0) {

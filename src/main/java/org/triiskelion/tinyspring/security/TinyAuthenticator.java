@@ -27,7 +27,7 @@ public abstract class TinyAuthenticator {
 	                                                  String username,
 	                                                  String password);
 
-	public abstract void authenticateStatelessly(HttpServletRequest request, HttpServletResponse
+	public abstract boolean authenticateStatelessly(HttpServletRequest request, HttpServletResponse
 			response);
 
 

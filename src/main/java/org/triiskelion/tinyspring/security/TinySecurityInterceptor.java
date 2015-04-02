@@ -106,7 +106,7 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 					}
 					if(requireCheck) {
 
-						checkAndRespond(entry, request, response, classAnnotation);
+						return checkAndRespond(entry, request, response, classAnnotation);
 
 					}
 
@@ -114,10 +114,11 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 				}
 			}
 		}
+
 		return true;
 	}
 
-	private void checkAndRespond(String entry, HttpServletRequest request,
+	private boolean checkAndRespond(String entry, HttpServletRequest request,
 	                             HttpServletResponse response,
 	                             SecurityCheck annotation) throws
 			ServletException, IOException {
@@ -126,36 +127,39 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 				StringUtils.join(annotation.requireRole(), ","), annotation.requirePrivilege());
 
 		if(annotation.stateless()) {//check from header
-			authenticator.authenticateStatelessly(request, response);
+			return authenticator.authenticateStatelessly(request, response);
 
 		} else {
 			TinyUser user =
-					(TinyUser) request.getSession().getAttribute(TinyAuthenticator
-							.SESSION_NAME_USER);
+					(TinyUser) request.getSession()
+					                  .getAttribute(TinyAuthenticator.SESSION_NAME_USER);
 
 			if(user == null) {
+
 				log.debug("Security check for [{}] user not found. Access denied.", entry);
 				request.setAttribute("notLogin", true);
 				RequestDispatcher rd = request.getRequestDispatcher(accessDeniedUrl);
 				rd.forward(request, response);
-				return;
+				return false;
+
 			} else {
 
 				String key = annotation.requirePrivilege();
 				if(key != null && !key.isEmpty()) {
-					int value = PrivilegeService.getPrivilege(user.getPrivilegeSet(), key);
+					int value = Privilege.getPrivilege(user.getPrivilegeSet(), key);
 					if(value <= 0) {
 						log.debug("Security check for [{}] privilege[{}] failed. Access denied.",
 								entry, key);
 						RequestDispatcher rd = request.getRequestDispatcher(privilegeDeniedUrl);
 						rd.forward(request, response);
-						return;
+						return false;
 					}
 				}
 			}
 		}
 
 		log.debug("Security check for [{}] finished, Access granted.", entry);
+		return true;
 	}
 
 	@Override
