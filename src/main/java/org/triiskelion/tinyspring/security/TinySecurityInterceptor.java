@@ -8,40 +8,33 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import org.springframework.web.servlet.resource.ResourceHttpRequestHandler;
 
-import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
- * Created with IntelliJ IDEA.
- * User: Sebastian MA
- * Date: August 10, 2014
- * Time: 15:02
+ * @author Sebastian MA
  */
-public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
+public abstract class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 
 	private static final Logger log = LoggerFactory.getLogger(TinySecurityInterceptor.class);
 
-	private String accessDeniedUrl;
 
-	private String privilegeDeniedUrl;
+	protected abstract TinyAuthenticator getAuthenticator();
 
-	TinyAuthenticator authenticator;
+	protected abstract void onNotLogin(HttpServletRequest request,
+	                                   HttpServletResponse response);
 
-	public TinyAuthenticator getAuthenticator() {
+	protected abstract void onRequireAllPrivilegesFail(HttpServletRequest request,
+	                                                   HttpServletResponse response);
 
-		return authenticator;
-	}
+	protected abstract void onRequireAnyPrivilegeFail(HttpServletRequest request,
+	                                                  HttpServletResponse response);
 
-	public void setAuthenticator(TinyAuthenticator authenticator) {
-
-		this.authenticator = authenticator;
-	}
 
 	@Override
-	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object
+	public final boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object
 			handler) throws Exception {
 
 		if(handler instanceof ResourceHttpRequestHandler) {
@@ -51,146 +44,195 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 		if(handler instanceof HandlerMethod) {
 			HandlerMethod handlerMethod = (HandlerMethod) handler;
 
-			SecurityCheck classAnnotation
-					= handlerMethod.getMethod().getDeclaringClass().getAnnotation(SecurityCheck
-					.class);
-			SecurityCheck methodAnnotation = handlerMethod.getMethodAnnotation(SecurityCheck
-					.class);
-			String entry = request.getRequestURI().replace(request.getContextPath(), "");
+			SecurityCheck classAnnotation =
+					handlerMethod.getMethod()
+					             .getDeclaringClass()
+					             .getAnnotation(SecurityCheck.class);
 
-			if(methodAnnotation != null) {
+			SecurityCheck methodAnnotation =
+					handlerMethod
+							.getMethodAnnotation(SecurityCheck.class);
 
+			String url = request.getRequestURI().replace(request.getContextPath(), "");
+
+			// check method annotation
+			if(methodAnnotation != null) { // if method is annotated
 				if(!methodAnnotation.value()) {
-					log.debug("Security Check for [{}] disabled. Access granted.", entry);
-				} else {
-					checkAndRespond(entry, request, response, methodAnnotation);
+					log.debug("Access granted [{}]: @SecurityCheck disabled.", url);
+					return true;
 				}
-			} else {
-				if(classAnnotation == null) {
-					log.debug("No @SecurityCheck found for [{}]. Access granted.", entry);
+				return checkAndRespond(url, request, response, methodAnnotation
+								.requireAnyPrivileges(), methodAnnotation.requireAllPrivileges(),
+						methodAnnotation.stateless());
+			}
+
+			// check type annotation
+			if(classAnnotation == null) {
+				log.debug(" Access granted [{}]: @SecurityCheck not found", url);
+				return true;
+			}
+
+			if(!classAnnotation.value()) {
+				log.debug("Access granted [{}]: @SecurityCheck disabled.", url);
+				return true;
+			}
+
+			String[] matches = classAnnotation.matches();
+			String[] excludes = classAnnotation.excludes();
+
+			boolean requireCheck = false;
+
+			for(String pattern : matches) {
+				if(pattern.contains("**")) {
+					pattern = pattern.replace("**", ".*");
 				} else {
-					String[] matches = classAnnotation.matches();
-					String[] excludes = classAnnotation.excludes();
-
-					boolean requireCheck = false;
-
-					for(String match : matches) {
-						if(match.contains("**")) {
-							match = match.replace("**", ".*");
-						} else {
-							match = match.replace("*", "[^/]*");
-						}
-						if(entry.matches(match)) {
-							requireCheck = true;
-						} else {
-							log.debug("SecurityCheck for [{}] not matched. Access granted.",
-									entry);
-						}
-
-						if(requireCheck) {
-							for(String exclude : excludes) {
-								if(exclude.contains("**")) {
-									exclude = exclude.replace("**", ".*");
-								} else {
-									exclude = exclude.replace("*", "[^/]*");
-								}
-								exclude = ".*" + exclude + ".*";
-								if(entry.matches(exclude)) {
-									requireCheck = false;
-									log.debug("SecurityCheck for [{}] excluded. Access granted.",
-											entry);
-									break;
-								}
-							}
-						}
-					}
-					if(requireCheck) {
-
-						return checkAndRespond(entry, request, response, classAnnotation);
-
-					}
-
-
+					pattern = pattern.replace("*", "[^/]*");
+				}
+				if(url.matches(pattern)) {
+					requireCheck = true;
+					break;
 				}
 			}
+
+			if(!requireCheck) {
+				log.debug("Access granted [{}]: pattern not match", url);
+				return true;
+
+			} else {
+
+				for(String excludePattern : excludes) {
+					if(excludePattern.contains("**")) {
+						excludePattern = excludePattern.replace("**", ".*");
+					} else {
+						excludePattern = excludePattern.replace("*", "[^/]*");
+					}
+					excludePattern = ".*" + excludePattern + ".*";
+					if(url.matches(excludePattern)) {
+						requireCheck = false;
+						log.debug("Access granted [{}]: excluded", url);
+						break;
+					}
+				}
+			}
+
+			if(requireCheck) { // now check it
+				return checkAndRespond(url, request, response, classAnnotation
+								.requireAnyPrivileges(), classAnnotation.requireAllPrivileges(),
+						classAnnotation.stateless());
+			}
+
+
 		}
 
-		return true;
+		return true; //if fall here, access will be granted
 	}
 
-	private boolean checkAndRespond(String entry, HttpServletRequest request,
-	                             HttpServletResponse response,
-	                             SecurityCheck annotation) throws
-			ServletException, IOException {
+	private final boolean checkAndRespond(String url,
+	                                      HttpServletRequest request,
+	                                      HttpServletResponse response,
+	                                      String[] requireAnyPrivileges,
+	                                      String[] requireAllPrivileges,
+	                                      boolean stateless)
+			throws ServletException, IOException {
 
-		log.debug("Security check for [{}], require roles [{}], privileges [{}]", entry,
-				StringUtils.join(annotation.requireRole(), ","), annotation.requirePrivilege());
+		log.debug("Security check for [{}], requireAnyPrivileges[{}], requireAllPrivileges[{}]",
+				url,
+				StringUtils.join(requireAnyPrivileges, ","),
+				StringUtils.join(requireAllPrivileges, ",")
+		         );
 
-		if(annotation.stateless()) {//check from header
-			return authenticator.authenticateStatelessly(request, response);
 
-		} else {
-			TinyUser user =
-					(TinyUser) request.getSession()
-					                  .getAttribute(TinyAuthenticator.SESSION_NAME_USER);
+		if(stateless) { // authenticate via request
+			return getAuthenticator().authenticateStatelessly(request, response);
+		}
 
-			if(user == null) {
+		TinyUser user = (TinyUser) request.getSession()
+		                                  .getAttribute(TinyAuthenticator.SESSION_NAME_USER);
 
-				log.debug("Security check for [{}] user not found. Access denied.", entry);
-				request.setAttribute("notLogin", true);
-				RequestDispatcher rd = request.getRequestDispatcher(accessDeniedUrl);
-				rd.forward(request, response);
+		if(user == null) { // not login
+
+			log.debug("Security check for [{}] user not found. Access denied.", url);
+
+			//			request.setAttribute("notLogin", true);
+			//			RequestDispatcher rd = request.getRequestDispatcher(accessDeniedUrl);
+			//			rd.forward(request, response);
+			onNotLogin(request, response);
+			return false;
+
+		} else { // logged in
+
+			boolean success = checkRequireAnyPrivileges(
+					request, response, user.getPrivilegeSet(), requireAnyPrivileges);
+			if(!success) {
+				log.error("Access denied [{}]: requireAnyPrivileges failed: values={}",
+						url,
+						StringUtils.join(requireAnyPrivileges, ","));
 				return false;
+			}
 
-			} else {
-
-				String key = annotation.requirePrivilege();
-				if(key != null && !key.isEmpty()) {
-					int value = Privilege.getPrivilege(user.getPrivilegeSet(), key);
-					if(value <= 0) {
-						log.debug("Security check for [{}] privilege[{}] failed. Access denied.",
-								entry, key);
-						RequestDispatcher rd = request.getRequestDispatcher(privilegeDeniedUrl);
-						rd.forward(request, response);
-						return false;
-					}
-				}
+			success = checkRequireAllPrivileges(
+					request, response, user.getPrivilegeSet(), requireAllPrivileges);
+			if(!success) {
+				log.error("Access denied [{}]: requireAllPrivileges failed: values={}",
+						url,
+						StringUtils.join(requireAllPrivileges, ","));
+				return false;
 			}
 		}
 
-		log.debug("Security check for [{}] finished, Access granted.", entry);
+		log.debug(" Access granted [{}]: passed", url);
 		return true;
 	}
 
+	private boolean checkRequireAnyPrivileges(HttpServletRequest req, HttpServletResponse res,
+	                                          Privilege privilegeSet, String[] roles) {
+
+		boolean okay = false;
+		for(String key : roles) {
+
+			if((privilegeSet.getValue(key)) > 0) {
+				okay = true;
+				break;
+			}
+		}
+		if(!okay) {
+			onRequireAnyPrivilegeFail(req, res);
+			return false;
+		}
+		return true;
+	}
+
+	private boolean checkRequireAllPrivileges(
+			HttpServletRequest req, HttpServletResponse res,
+			Privilege privilegeSet, String[] privileges) {
+
+		if(privileges != null) {
+			for(String key : privileges) {
+				int value = privilegeSet.getValue(key);
+				if(value <= 0) {
+					onRequireAllPrivilegesFail(req, res);
+					return false;
+				}
+			}
+
+		}
+		return true;
+	}
+
+
 	@Override
-	public void postHandle(HttpServletRequest request, HttpServletResponse response,
-	                       Object handler, ModelAndView modelAndView) throws Exception {
+	public final void postHandle(HttpServletRequest request, HttpServletResponse response,
+	                             Object handler, ModelAndView modelAndView) throws Exception {
 
+		super.postHandle(request, response, handler, modelAndView);
 	}
 
 	@Override
-	public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
-	                            Object handler, Exception ex) throws Exception {
+	public final void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+	                                  Object handler, Exception ex) throws Exception {
 
+		super.afterCompletion(request, response, handler, ex);
 	}
 
-	public String getAccessDeniedUrl() {
 
-		return accessDeniedUrl;
-	}
-
-	public void setAccessDeniedUrl(String accessDeniedUrl) {
-
-		this.accessDeniedUrl = accessDeniedUrl;
-	}
-
-	public String getPrivilegeDeniedUrl() {
-
-		return privilegeDeniedUrl;
-	}
-
-	public void setPrivilegeDeniedUrl(String privilegeDeniedUrl) {
-
-		this.privilegeDeniedUrl = privilegeDeniedUrl;
-	}
 }

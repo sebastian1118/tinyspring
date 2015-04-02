@@ -25,25 +25,33 @@ public @interface SecurityCheck {
 
 	boolean stateless() default false;
 
-	String[] requireRole() default { };
-
-	String requirePrivilege() default "";
+	/**
+	 * If set, security check is passed if ANY of the privileges is granted.
+	 * <p>This is the notation of 'Role'.</p>
+	 *
+	 * @return array of privilege keys
+	 */
+	String[] requireAnyPrivileges() default {};
 
 	/**
-	 * If set, only matched paths will be checked unless it is excluded. Only effective if
-	 * annotated on TYPE.
+	 * If set, security check is passed only if ALL of the privileges is granted.
 	 *
-	 * @return
+	 * @return array of privilege keys
+	 */
+	String[] requireAllPrivileges() default {};
+
+	/**
+	 * If set, only matched paths will be checked. Excluded path selected by <code>excludes()
+	 * </code> will NOT be checked.
+	 * <p>Only effective if annotated on TYPE.</p>
 	 */
 	String[] matches() default { "**" };
 
 	/**
 	 * matched paths will be excluded thus will NOT be checked. Only effective if annotated on
 	 * TYPE.
-	 *
-	 * @return
 	 */
-	String[] excludes() default { };
+	String[] excludes() default {};
 
 
 }

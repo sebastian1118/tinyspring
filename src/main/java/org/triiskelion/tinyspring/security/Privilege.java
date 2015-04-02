@@ -2,141 +2,224 @@ package org.triiskelion.tinyspring.security;
 
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * @author Sebastian MA
+ * Privilege
+ *
+ * @author Sebastian
  */
-public class Privilege {
+public class Privilege implements Cloneable {
 
 	private static final Logger log = LoggerFactory.getLogger(Privilege.class);
 
-	public static int getPrivilege(PrivilegeSet set, String key) {
+	String name = "";
+
+	String description = "";
+
+	int value = -1;
+
+	Map<String, Privilege> items = new HashMap<>();
+
+	Map<String, Privilege> subsets = new HashMap<>();
+
+	public Privilege() {
+
+	}
+
+	public Privilege(Privilege clone) {
+
+		this.name = clone.name;
+		this.description = clone.description;
+		this.value = clone.value;
+	}
+
+	public Privilege(String name, String description) {
+
+		this.name = name;
+		this.description = description;
+	}
+
+	public Privilege(String name, String description, int value) {
+
+		this.name = name;
+		this.description = description;
+		this.value = value;
+	}
+
+	public Map<String, Privilege> getItems() {
+
+		return items;
+	}
+
+	public void setItems(Map<String, Privilege> items) {
+
+		this.items = items;
+	}
+
+	public int getValue() {
+
+		return value;
+	}
+
+	public void setValue(int value) {
+
+		this.value = value;
+	}
+
+
+	public String getName() {
+
+		return name;
+	}
+
+	public void setName(String name) {
+
+		this.name = name;
+	}
+
+	public String getDescription() {
+
+		return description;
+	}
+
+	public void setDescription(String description) {
+
+		this.description = description;
+	}
+
+
+	public Map<String, Privilege> getSubsets() {
+
+		return subsets;
+	}
+
+	public void setSubsets(Map<String, Privilege> subsets) {
+
+		this.subsets = subsets;
+	}
+
+	public String toString() {
+
+		return JSONObject.toJSONString(this, true);
+	}
+
+	public Privilege clone() {
+
+		Privilege result = new Privilege();
+		result.name = this.name;
+		result.description = this.description;
+		result.value = this.value;
+
+		for(String key : this.getItems().keySet()) {
+			result.getItems().put(key, this.getItems().get(key).clone());
+		}
+		for(String key : this.getSubsets().keySet()) {
+			result.getItems().put(key, this.getSubsets().get(key).clone());
+		}
+		return result;
+	}
+
+	public Privilege merge(Privilege set) {
 
 		if(set == null) {
-			throw new RuntimeException("PrivilegeSet is null.");
+			throw new IllegalArgumentException();
 		}
-		if(StringUtils.isBlank(key)) {
-			throw new RuntimeException("privilege key is blank.");
+
+		Privilege result = this.clone();
+		if(result == null) {
+			throw new RuntimeException();
 		}
-		return getPrivilege(set, StringUtils.split(key, "."), 0);
+
+		if(result.getItems() != null && set.getItems() != null) {
+			for(String key : set.getItems().keySet()) {
+				if(result.getItems().get(key) != null) {
+					result.getItems().get(key).setValue(
+							Math.max(result.getItems().get(key).getValue(),
+									set.getItems().get(key).getValue())
+					                                   );
+				} else {
+					result.getItems().put(key, new Privilege(set.getItems().get(key)));
+				}
+			}
+		}
+
+		if(result.getSubsets() != null && set.getSubsets() != null) {
+			for(String key : set.getSubsets().keySet()) {
+				if(result.getSubsets().get(key) == null) {
+					result.getSubsets().put(key, new Privilege());
+				}
+				result.getSubsets().put(key,
+						result.getSubsets().get(key).merge(set.getSubsets().get(key)));
+			}
+		}
+
+		return result;
+	}
+
+	public static Privilege parse(@Nullable String... privilegeSet) {
+
+		if(privilegeSet == null || privilegeSet.length == 0) {
+			return null;
+		}
+
+		ArrayList<Privilege> list = new ArrayList<>();
+		for(String json : privilegeSet) {
+			Privilege set = JSONObject.parseObject(json, Privilege.class);
+			list.add(set);
+		}
+
+		//merge them into one
+		Privilege finalResult = new Privilege();
+		for(Privilege set : list) {
+			finalResult.merge(set);
+		}
+		return finalResult;
 	}
 
 	/**
-	 * @param privilegeSet
-	 * 		the privilege set to be checked
-	 * @param key
-	 * 		array of keys
-	 * @param index
-	 * 		current position of the key array
+	 * Retrieve a privilege from an privilege set.
 	 *
-	 * @return
+	 * @param key
+	 * 		the	key of the privilege
+	 *
+	 * @return value of the privilege or -1 if not found
 	 */
-	private static int getPrivilege(PrivilegeSet privilegeSet, String[] key, int index) {
+	public int getValue(@NotNull String key) {
 
-		if(privilegeSet == null) {
-			return -1;
+		if(StringUtils.isBlank(key)) {
+			throw new IllegalArgumentException("privilege key is blank.");
 		}
-		if(index == key.length - 1) {
-			PrivilegeItem item = privilegeSet.getItems().get(key[index]);
+		String[] keys = StringUtils.split(key, ".");
+		if(keys == null) {
+			throw new IllegalArgumentException("Could not split key: " + key);
+		}
+		return getValue(this, keys, 0);
+	}
+
+	protected static int getValue(Privilege set, @NotNull String[] key, int index) {
+
+		if(index == key.length - 1) { // position
+			Privilege item = set.getItems().get(key[index]);
 			if(item == null) {
-				log.error("privilege {} not found", StringUtils.join(key, "."));
+				log.warn("privilege {} not found", StringUtils.join(key, "."));
 				return -1;
 			} else {
 				return item.getValue();
 			}
 		} else if(index < key.length - 1) {
 
-			return getPrivilege(privilegeSet.getSubsets().get(key[index]),
-					key, index + 1);
-		} else {
-			throw new RuntimeException("Should never get here.");
-		}
-	}
-
-	/**
-	 * Merge two privilege set
-	 *
-	 * @param dest
-	 * @param privilegeString
-	 *
-	 * @return
-	 */
-	public static PrivilegeSet merge(PrivilegeSet dest, String privilegeString) {
-
-		return merge(dest, parsePrivilegeSet(privilegeString));
-	}
-
-	/**
-	 * Creates privilege set from json string.if multiple privilege sets are present,
-	 * they will be merged into one.
-	 *
-	 * @param privilegeSet
-	 * 		the privilege sets to parse
-	 *
-	 * @return the parsed and merged PrivilegeSet instance
-	 */
-	public static PrivilegeSet parsePrivilegeSet(String... privilegeSet) {
-
-		if(privilegeSet == null || privilegeSet.length == 0) {
-			return null;
+			Privilege subset = set.getSubsets().get(key[index]);
+			return subset == null ? -1 : getValue(set, key, index + 1);
 		}
 
-		ArrayList<PrivilegeSet> list = new ArrayList<>();
-		for(String json : privilegeSet) {
-			PrivilegeSet set = JSONObject.parseObject(json, PrivilegeSet.class);
-			list.add(set);
-		}
-
-		//merge them into one
-		PrivilegeSet finalResult = new PrivilegeSet();
-		for(PrivilegeSet set : list) {
-			merge(finalResult, set);
-		}
-		return finalResult;
-	}
-
-	/**
-	 * Merges two privilege set into the destination. the original set will not be modified.
-	 *
-	 * @param dest
-	 * 		the merged privilege set
-	 * @param origin
-	 * 		the privilege set to merge
-	 *
-	 * @return
-	 */
-	static PrivilegeSet merge(PrivilegeSet dest, PrivilegeSet origin) {
-
-		BeanUtils.copyProperties(dest, origin);
-
-		if(dest != null && dest.getItems() != null
-				&& origin != null && origin.getItems() != null) {
-			for(String key : origin.getItems().keySet()) {
-				if(dest.getItems().get(key) != null) {
-					dest.getItems().get(key).setValue(Math.max(dest.getItems().get(key).getValue(),
-									origin.getItems().get(key).getValue())
-					                                 );
-				} else {
-					dest.getItems().put(key, new PrivilegeItem(origin.getItems().get(key)));
-				}
-			}
-		}
-
-		if(dest != null && dest.getSubsets() != null
-				&& origin != null && origin.getSubsets() != null) {
-			for(String key : origin.getSubsets().keySet()) {
-				if(dest.getSubsets().get(key) == null) {
-					dest.getSubsets().put(key, new PrivilegeSet());
-				}
-				merge(dest.getSubsets().get(key), origin.getSubsets().get(key));
-			}
-		}
-
-		return dest;
+		throw new RuntimeException("Should never getValue here.");
 	}
 }

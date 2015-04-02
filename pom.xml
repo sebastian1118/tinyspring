@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.triiskelion</groupId>
     <artifactId>tinyspring</artifactId>
-    <version>0.9.3-SNAPSHOT</version>
+    <version>0.10.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>TinySpring</name>
     <description>Set of tools for spring-mvc projects</description>
@@ -149,6 +149,7 @@
         </dependency>
         <!-- END fastjson -->
 
+
         <!-- BEGIN Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -193,17 +194,16 @@
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-entitymanager</artifactId>
-            <version>4.3.6.Final</version>
-            <!--<exclusions>-->
-            <!--<exclusion>-->
-            <!--<artifactId>jboss-logging</artifactId>-->
-            <!--<groupId>org.jboss.logging</groupId>-->
-            <!--</exclusion>-->
-            <!--</exclusions>-->
+            <version>4.3.8.Final</version>
             <scope>test</scope>
         </dependency>
         <!-- END JPA 2.0 Hibernate provider -->
 
+        <dependency>
+            <groupId>com.intellij</groupId>
+            <artifactId>annotations</artifactId>
+            <version>12.0</version>
+        </dependency>
 
     </dependencies>
 
