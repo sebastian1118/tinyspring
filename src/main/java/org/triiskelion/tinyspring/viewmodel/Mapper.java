@@ -1,13 +1,10 @@
 package org.triiskelion.tinyspring.viewmodel;
 
 /**
- * Created with IntelliJ IDEA.
- * User: Sebastian MA
- * Date: December 07, 2014
- * Time: 12:56
+ * @author Sebastian MA
  */
-public interface Mapper<O, D> {
+public interface Mapper<S, D> {
 
-	public D map(O obj);
+	D map(S obj);
 
 }

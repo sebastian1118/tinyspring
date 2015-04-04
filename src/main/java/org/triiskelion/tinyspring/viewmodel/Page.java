@@ -134,7 +134,7 @@ public class Page<T> {
 	 * @param <A>
 	 * 		the model to map to.
 	 *
-	 * @return the mapped Page instance
+	 * @return the mapped instance
 	 */
 	public <A> Page<A> map(Mapper<T, A> mapper) {
 

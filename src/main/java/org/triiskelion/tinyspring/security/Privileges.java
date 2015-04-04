@@ -12,13 +12,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Privilege
+ * Set of privileges defining the capabilities of one role or one user.
  *
  * @author Sebastian
  */
-public class Privilege implements Cloneable {
+public class Privileges implements Cloneable {
 
-	private static final Logger log = LoggerFactory.getLogger(Privilege.class);
+	private static final Logger log = LoggerFactory.getLogger(Privileges.class);
 
 	String name = "";
 
@@ -26,40 +26,33 @@ public class Privilege implements Cloneable {
 
 	int value = -1;
 
-	Map<String, Privilege> items = new HashMap<>();
+	Map<String, Privileges> items = new HashMap<>();
 
-	Map<String, Privilege> subsets = new HashMap<>();
+	Map<String, Privileges> subsets = new HashMap<>();
 
-	public Privilege() {
+	public Privileges() {
 
 	}
 
-	public Privilege(Privilege clone) {
-
-		this.name = clone.name;
-		this.description = clone.description;
-		this.value = clone.value;
-	}
-
-	public Privilege(String name, String description) {
+	public Privileges(String name, String description) {
 
 		this.name = name;
 		this.description = description;
 	}
 
-	public Privilege(String name, String description, int value) {
+	public Privileges(String name, String description, int value) {
 
 		this.name = name;
 		this.description = description;
 		this.value = value;
 	}
 
-	public Map<String, Privilege> getItems() {
+	public Map<String, Privileges> getItems() {
 
 		return items;
 	}
 
-	public void setItems(Map<String, Privilege> items) {
+	public void setItems(Map<String, Privileges> items) {
 
 		this.items = items;
 	}
@@ -96,12 +89,12 @@ public class Privilege implements Cloneable {
 	}
 
 
-	public Map<String, Privilege> getSubsets() {
+	public Map<String, Privileges> getSubsets() {
 
 		return subsets;
 	}
 
-	public void setSubsets(Map<String, Privilege> subsets) {
+	public void setSubsets(Map<String, Privileges> subsets) {
 
 		this.subsets = subsets;
 	}
@@ -111,9 +104,9 @@ public class Privilege implements Cloneable {
 		return JSONObject.toJSONString(this, true);
 	}
 
-	public Privilege clone() {
+	public Privileges clone() {
 
-		Privilege result = new Privilege();
+		Privileges result = new Privileges();
 		result.name = this.name;
 		result.description = this.description;
 		result.value = this.value;
@@ -127,58 +120,67 @@ public class Privilege implements Cloneable {
 		return result;
 	}
 
-	public Privilege merge(Privilege set) {
+	/**
+	 * Returns a copy of this instance merged with another one.<p>
+	 * This instance is immutable and unaffected by this method call.
+	 *
+	 * @param privilege
+	 * 		another privilege instance
+	 *
+	 * @return a copy of this instance merged with another
+	 */
+	public Privileges merge(Privileges privilege) {
 
-		if(set == null) {
+		if(privilege == null) {
 			throw new IllegalArgumentException();
 		}
 
-		Privilege result = this.clone();
+		Privileges result = this.clone();
 		if(result == null) {
 			throw new RuntimeException();
 		}
 
-		if(result.getItems() != null && set.getItems() != null) {
-			for(String key : set.getItems().keySet()) {
+		if(result.getItems() != null && privilege.getItems() != null) {
+			for(String key : privilege.getItems().keySet()) {
 				if(result.getItems().get(key) != null) {
 					result.getItems().get(key).setValue(
 							Math.max(result.getItems().get(key).getValue(),
-									set.getItems().get(key).getValue())
+									privilege.getItems().get(key).getValue())
 					                                   );
 				} else {
-					result.getItems().put(key, new Privilege(set.getItems().get(key)));
+					result.getItems().put(key, privilege.getItems().get(key).clone());
 				}
 			}
 		}
 
-		if(result.getSubsets() != null && set.getSubsets() != null) {
-			for(String key : set.getSubsets().keySet()) {
+		if(result.getSubsets() != null && privilege.getSubsets() != null) {
+			for(String key : privilege.getSubsets().keySet()) {
 				if(result.getSubsets().get(key) == null) {
-					result.getSubsets().put(key, new Privilege());
+					result.getSubsets().put(key, new Privileges());
 				}
 				result.getSubsets().put(key,
-						result.getSubsets().get(key).merge(set.getSubsets().get(key)));
+						result.getSubsets().get(key).merge(privilege.getSubsets().get(key)));
 			}
 		}
 
 		return result;
 	}
 
-	public static Privilege parse(@Nullable String... privilegeSet) {
+	public static Privileges parse(@Nullable String... privilegeSet) {
 
 		if(privilegeSet == null || privilegeSet.length == 0) {
 			return null;
 		}
 
-		ArrayList<Privilege> list = new ArrayList<>();
+		ArrayList<Privileges> list = new ArrayList<>();
 		for(String json : privilegeSet) {
-			Privilege set = JSONObject.parseObject(json, Privilege.class);
+			Privileges set = JSONObject.parseObject(json, Privileges.class);
 			list.add(set);
 		}
 
 		//merge them into one
-		Privilege finalResult = new Privilege();
-		for(Privilege set : list) {
+		Privileges finalResult = new Privileges();
+		for(Privileges set : list) {
 			finalResult.merge(set);
 		}
 		return finalResult;
@@ -204,10 +206,10 @@ public class Privilege implements Cloneable {
 		return getValue(this, keys, 0);
 	}
 
-	protected static int getValue(Privilege set, @NotNull String[] key, int index) {
+	protected static int getValue(Privileges set, @NotNull String[] key, int index) {
 
 		if(index == key.length - 1) { // position
-			Privilege item = set.getItems().get(key[index]);
+			Privileges item = set.getItems().get(key[index]);
 			if(item == null) {
 				log.warn("privilege {} not found", StringUtils.join(key, "."));
 				return -1;
@@ -216,7 +218,7 @@ public class Privilege implements Cloneable {
 			}
 		} else if(index < key.length - 1) {
 
-			Privilege subset = set.getSubsets().get(key[index]);
+			Privileges subset = set.getSubsets().get(key[index]);
 			return subset == null ? -1 : getValue(set, key, index + 1);
 		}
 

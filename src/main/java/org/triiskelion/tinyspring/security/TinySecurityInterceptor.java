@@ -12,26 +12,26 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Set;
 
 /**
  * @author Sebastian MA
  */
-public abstract class TinySecurityInterceptor extends HandlerInterceptorAdapter {
+public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 
 	private static final Logger log = LoggerFactory.getLogger(TinySecurityInterceptor.class);
 
+	TinySecurityManager securityManager;
 
-	protected abstract TinyAuthenticator getAuthenticator();
+	public TinySecurityManager getSecurityManager() {
 
-	protected abstract void onNotLogin(HttpServletRequest request,
-	                                   HttpServletResponse response);
+		return securityManager;
+	}
 
-	protected abstract void onRequireAllPrivilegesFail(HttpServletRequest request,
-	                                                   HttpServletResponse response);
+	public void setSecurityManager(TinySecurityManager securityManager) {
 
-	protected abstract void onRequireAnyPrivilegeFail(HttpServletRequest request,
-	                                                  HttpServletResponse response);
-
+		this.securityManager = securityManager;
+	}
 
 	@Override
 	public final boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object
@@ -61,8 +61,10 @@ public abstract class TinySecurityInterceptor extends HandlerInterceptorAdapter 
 					log.debug("Access granted [{}]: @SecurityCheck disabled.", url);
 					return true;
 				}
-				return checkAndRespond(url, request, response, methodAnnotation
-								.requireAnyPrivileges(), methodAnnotation.requireAllPrivileges(),
+				return checkAndRespond(url, request, response,
+						methodAnnotation.requireRoles(),
+						methodAnnotation.requireAnyPrivileges(),
+						methodAnnotation.requireAllPrivileges(),
 						methodAnnotation.stateless());
 			}
 
@@ -116,11 +118,12 @@ public abstract class TinySecurityInterceptor extends HandlerInterceptorAdapter 
 			}
 
 			if(requireCheck) { // now check it
-				return checkAndRespond(url, request, response, classAnnotation
-								.requireAnyPrivileges(), classAnnotation.requireAllPrivileges(),
+				return checkAndRespond(url, request, response,
+						classAnnotation.requireRoles(),
+						classAnnotation.requireAnyPrivileges(),
+						classAnnotation.requireAllPrivileges(),
 						classAnnotation.stateless());
 			}
-
 
 		}
 
@@ -130,6 +133,7 @@ public abstract class TinySecurityInterceptor extends HandlerInterceptorAdapter 
 	private final boolean checkAndRespond(String url,
 	                                      HttpServletRequest request,
 	                                      HttpServletResponse response,
+	                                      String[] requireRoles,
 	                                      String[] requireAnyPrivileges,
 	                                      String[] requireAllPrivileges,
 	                                      boolean stateless)
@@ -142,27 +146,33 @@ public abstract class TinySecurityInterceptor extends HandlerInterceptorAdapter 
 		         );
 
 
-		if(stateless) { // authenticate via request
-			return getAuthenticator().authenticateStatelessly(request, response);
+		if(stateless) { // doAuthenticate via request
+			return securityManager.doAuthenticateStatelessly(request, response);
 		}
 
 		TinyUser user = (TinyUser) request.getSession()
-		                                  .getAttribute(TinyAuthenticator.SESSION_NAME_USER);
+		                                  .getAttribute(TinySecurityManager.SESSION_NAME_USER);
 
 		if(user == null) { // not login
 
 			log.debug("Security check for [{}] user not found. Access denied.", url);
 
-			//			request.setAttribute("notLogin", true);
-			//			RequestDispatcher rd = request.getRequestDispatcher(accessDeniedUrl);
-			//			rd.forward(request, response);
-			onNotLogin(request, response);
+			securityManager.onNotLogin(request, response);
 			return false;
 
 		} else { // logged in
 
-			boolean success = checkRequireAnyPrivileges(
-					request, response, user.getPrivilegeSet(), requireAnyPrivileges);
+			boolean success
+					= checkRequireRoles(request, response, user.getRoles(), requireRoles);
+			if(!success) {
+				log.error("Access denied [{}]: requireRoles failed: values={}",
+						url,
+						StringUtils.join(requireRoles, ","));
+				return false;
+			}
+
+			success = checkRequireAnyPrivileges(
+					request, response, user.getPrivilege(), requireAnyPrivileges);
 			if(!success) {
 				log.error("Access denied [{}]: requireAnyPrivileges failed: values={}",
 						url,
@@ -171,7 +181,7 @@ public abstract class TinySecurityInterceptor extends HandlerInterceptorAdapter 
 			}
 
 			success = checkRequireAllPrivileges(
-					request, response, user.getPrivilegeSet(), requireAllPrivileges);
+					request, response, user.getPrivilege(), requireAllPrivileges);
 			if(!success) {
 				log.error("Access denied [{}]: requireAllPrivileges failed: values={}",
 						url,
@@ -184,19 +194,34 @@ public abstract class TinySecurityInterceptor extends HandlerInterceptorAdapter 
 		return true;
 	}
 
+	private boolean checkRequireRoles(HttpServletRequest request, HttpServletResponse response,
+	                                  Set<Role> roles, String[] requireRoles) {
+
+		for(String requireRole : requireRoles) {
+			for(Role userRole : roles) {
+				if(userRole.getId().equals(requireRole)) {
+					return true;
+				}
+			}
+		}
+
+		securityManager.onRequireRolesFail(request, response);
+		return false;
+	}
+
 	private boolean checkRequireAnyPrivileges(HttpServletRequest req, HttpServletResponse res,
-	                                          Privilege privilegeSet, String[] roles) {
+	                                          Privileges privilege, String[] roles) {
 
 		boolean okay = false;
 		for(String key : roles) {
 
-			if((privilegeSet.getValue(key)) > 0) {
+			if((privilege.getValue(key)) > 0) {
 				okay = true;
 				break;
 			}
 		}
 		if(!okay) {
-			onRequireAnyPrivilegeFail(req, res);
+			securityManager.onRequireAnyPrivilegeFail(req, res);
 			return false;
 		}
 		return true;
@@ -204,13 +229,13 @@ public abstract class TinySecurityInterceptor extends HandlerInterceptorAdapter 
 
 	private boolean checkRequireAllPrivileges(
 			HttpServletRequest req, HttpServletResponse res,
-			Privilege privilegeSet, String[] privileges) {
+			Privileges privilegeSet, String[] privileges) {
 
 		if(privileges != null) {
 			for(String key : privileges) {
 				int value = privilegeSet.getValue(key);
 				if(value <= 0) {
-					onRequireAllPrivilegesFail(req, res);
+					securityManager.onRequireAllPrivilegesFail(req, res);
 					return false;
 				}
 			}

@@ -17,13 +17,22 @@ public @interface SecurityCheck {
 
 	/**
 	 * default value is true. set to false if you wish to override TYPE-level annotation. Only
-	 * effective if annotated on METHOD.
+	 * effective when annotated on METHOD.
 	 *
 	 * @return
 	 */
 	boolean value() default true;
 
+	/**
+	 * If set to <code>True</code>, SecurityManger's <code>doAuthenticateStatelessly()</code> will
+	 * be used to perform the authentication.
+	 * <p>Default value is <code>False</code></p>
+	 *
+	 * @return
+	 */
 	boolean stateless() default false;
+
+	String[] requireRoles() default {};
 
 	/**
 	 * If set, security check is passed if ANY of the privileges is granted.

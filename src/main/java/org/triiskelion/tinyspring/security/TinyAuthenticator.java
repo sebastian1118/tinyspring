@@ -6,22 +6,13 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 /**
- * Created with IntelliJ IDEA.
- * User: Sebastian MA
- * Date: August 11, 2014
- * Time: 14:00
+ * @author Sebastian MA
  */
+@Deprecated
 public abstract class TinyAuthenticator {
 
 	public static final String SESSION_NAME_USER = "TINY_USER_OBJECT";
 
-	protected String logoutSuccessUrl;
-
-	protected String logoutFailureUrl;
-
-	protected String loginSuccessUrl;
-
-	protected String loginFailureUrl;
 
 	public abstract AuthenticationResult authenticate(HttpSession session,
 	                                                  String username,
@@ -30,46 +21,6 @@ public abstract class TinyAuthenticator {
 	public abstract boolean authenticateStatelessly(HttpServletRequest request, HttpServletResponse
 			response);
 
-
-	public void setLogoutSuccessUrl(String logoutSuccessUrl) {
-
-		this.logoutSuccessUrl = logoutSuccessUrl;
-	}
-
-	public String getLogoutFailureUrl() {
-
-		return logoutFailureUrl;
-	}
-
-	public void setLogoutFailureUrl(String logoutFailureUrl) {
-
-		this.logoutFailureUrl = logoutFailureUrl;
-	}
-
-	public String getLoginSuccessUrl() {
-
-		return loginSuccessUrl;
-	}
-
-	public String getLogoutSuccessUrl() {
-
-		return logoutSuccessUrl;
-	}
-
-	public void setLoginSuccessUrl(String loginSuccessUrl) {
-
-		this.loginSuccessUrl = loginSuccessUrl;
-	}
-
-	public String getLoginFailureUrl() {
-
-		return loginFailureUrl;
-	}
-
-	public void setLoginFailureUrl(String loginFailureUrl) {
-
-		this.loginFailureUrl = loginFailureUrl;
-	}
 
 	public class AuthenticationResult {
 
