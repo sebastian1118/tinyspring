@@ -364,5 +364,22 @@ public class TestTinyQuery {
 		assertEquals("carol", result.get(0).getName());
 	}
 
+	@Test
+	public void testWrappedSelect() {
+
+		TinyQuery<User> query = new TinyQuery<>(entityManager, User.class, true);
+		Page<User> result
+				= query.query("SELECT m FROM User m " +
+				"WHERE m.id IN " +
+				"(SELECT m.id FROM User m WHERE m.id=1 OR m.id=2 OR m.id=3)")
+				       .page(1, 2)
+				       .getPagedResult();
+
+		assertEquals(2, result.getData().size());
+		assertEquals(2, result.getTotalPage());
+		assertEquals(3, result.getTotal());
+
+	}
+
 
 }

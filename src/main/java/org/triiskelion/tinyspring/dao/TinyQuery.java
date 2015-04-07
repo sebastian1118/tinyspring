@@ -11,8 +11,6 @@ import javax.persistence.Query;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 
 /**
@@ -857,15 +855,18 @@ public class TinyQuery<T> {
 			return selectClause.toString();
 		} else {
 			if(count) {
-				Pattern p = Pattern.compile("select.*from", Pattern.CASE_INSENSITIVE | Pattern
-						.UNICODE_CASE);
-				Matcher m = p.matcher(jpqlExp.toString());
-				if(m.find()) {
-					String content = m.group().substring(7, m.group().length() - 5);
+				//Pattern p = Pattern.compile("select.*from", Pattern.CASE_INSENSITIVE | Pattern
+				//						.UNICODE_CASE);
+				//				Matcher m = p.matcher(jpqlExp.toString());
+
+				int begin = jpqlExp.toString().toLowerCase().indexOf("select");
+				int end = jpqlExp.toString().toLowerCase().indexOf("from");
+				if(begin >= 0 && end > 0) {
+					String content = jpqlExp.toString().substring(begin + 7, end-1);
 					return jpqlExp.toString()
 					              .replaceFirst(" " + content + " ", " count(" + content + ") ");
 				} else {
-					throw new IllegalArgumentException("count() failed. SELECT.*FROM not matched");
+					throw new IllegalArgumentException("count() failed. SELECT FROM not matched");
 				}
 
 			} else {
