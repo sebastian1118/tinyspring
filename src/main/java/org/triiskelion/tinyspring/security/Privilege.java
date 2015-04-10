@@ -16,7 +16,6 @@ public class Privilege {
 	private static final Logger log = LoggerFactory.getLogger(Privilege.class);
 
 	public static int getPrivilege(PrivilegeSet set, String key) {
-
 		if(set == null) {
 			throw new RuntimeException("PrivilegeSet is null.");
 		}

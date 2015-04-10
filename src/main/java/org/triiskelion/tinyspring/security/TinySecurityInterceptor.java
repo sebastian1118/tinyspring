@@ -63,7 +63,7 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 				if(!methodAnnotation.value()) {
 					log.debug("Security Check for [{}] disabled. Access granted.", entry);
 				} else {
-					checkAndRespond(entry, request, response, methodAnnotation);
+					return checkAndRespond(entry, request, response, methodAnnotation);
 				}
 			} else {
 				if(classAnnotation == null) {
@@ -119,8 +119,8 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 	}
 
 	private boolean checkAndRespond(String entry, HttpServletRequest request,
-	                             HttpServletResponse response,
-	                             SecurityCheck annotation) throws
+	                                HttpServletResponse response,
+	                                SecurityCheck annotation) throws
 			ServletException, IOException {
 
 		log.debug("Security check for [{}], require roles [{}], privileges [{}]", entry,
