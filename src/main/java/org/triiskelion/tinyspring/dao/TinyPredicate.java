@@ -396,7 +396,7 @@ public class TinyPredicate {
 
 	public static TinyPredicate in(String column, Object... values) {
 
-		return in(column, values);
+		return in(null, column, values);
 	}
 
 	public static TinyPredicate in(String alias, String column, Object... values) {
