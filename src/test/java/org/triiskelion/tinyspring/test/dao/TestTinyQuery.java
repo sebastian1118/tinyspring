@@ -4,11 +4,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.triiskelion.tinyspring.dao.OrderType;
+import org.triiskelion.tinyspring.dao.TinyQuery;
 import org.triiskelion.tinyspring.test.dao.base.Book;
 import org.triiskelion.tinyspring.test.dao.base.Person;
 import org.triiskelion.tinyspring.test.dao.base.User;
 import org.triiskelion.tinyspring.viewmodel.Page;
-import org.triiskelion.tinyspring.dao.*;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -103,6 +104,39 @@ public class TestTinyQuery {
 		result = query.ignoreNull(false).select()
 		              .where(equal("name", null))
 		              .count();
+	}
+
+	@Test
+	public void testNotEqual() {
+
+		TinyQuery<User> query;
+		query = new TinyQuery<>(entityManager, User.class, true);
+
+		long result = query.ignoreNull(true).select()
+		                   .where(notEqual("name", "alice"))
+		                   .count();
+		assertEquals(names.length - 1, result);
+
+	}
+
+	@Test
+	public void testLike() {
+
+		TinyQuery<User> query;
+		query = new TinyQuery<>(entityManager, User.class, true);
+
+		long result = query.ignoreNull(true).select()
+		                   .where(like("name", "%alice%"))
+		                   .count();
+		assertEquals(1, result);
+
+		query = new TinyQuery<>(entityManager, User.class, true);
+
+		result = query.ignoreNull(true).select()
+		              .where(like("name", "%ellen%"))
+		              .count();
+		assertEquals(2, result);
+
 	}
 
 	@Test
