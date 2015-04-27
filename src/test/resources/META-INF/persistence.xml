@@ -6,8 +6,13 @@
     <persistence-unit name="jpa-hsqldb" transaction-type="RESOURCE_LOCAL">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
+<<<<<<< HEAD
         <class>org.triiskelion.tinyspring.dao.test.base.Book</class>
         <class>org.triiskelion.tinyspring.dao.test.base.User</class>
+=======
+        <!--<class>org.triiskelion.tinyspring.test.dao.base.Book</class>-->
+        <!--<class>org.triiskelion.tinyspring.test.dao.base.User</class>-->
+>>>>>>> 830bfcd... add test cases
         <properties>
             <property name="javax.persistence.jdbc.driver" value="org.hsqldb.jdbcDriver" />
             <property name="javax.persistence.jdbc.url" value="jdbc:hsqldb:mem:." />
