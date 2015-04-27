@@ -6,15 +6,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.triiskelion.tinyspring.dao.OrderType;
 import org.triiskelion.tinyspring.dao.TinyQuery;
-<<<<<<< HEAD:src/test/java/org/triiskelion/tinyspring/dao/test/TestTinyQuery.java
 import org.triiskelion.tinyspring.dao.test.base.Book;
 import org.triiskelion.tinyspring.dao.test.base.Person;
 import org.triiskelion.tinyspring.dao.test.base.User;
-=======
-import org.triiskelion.tinyspring.test.dao.base.Book;
-import org.triiskelion.tinyspring.test.dao.base.Person;
-import org.triiskelion.tinyspring.test.dao.base.User;
->>>>>>> 830bfcd... add test cases:src/test/java/org/triiskelion/tinyspring/test/dao/TestTinyQuery.java
+
 import org.triiskelion.tinyspring.viewmodel.Page;
 
 import javax.persistence.EntityManager;
