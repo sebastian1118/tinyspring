@@ -12,7 +12,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Set;
 
 /**
  * @author Sebastian MA
@@ -163,7 +162,7 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 		} else { // logged in
 
 			boolean success
-					= checkRequireRoles(request, response, user.getRoles(), requireRoles);
+					= checkRequireRoles(request, response, user, requireRoles);
 			if(!success) {
 				log.error("Access denied [{}]: requireRoles failed: values={}",
 						url,
@@ -172,7 +171,7 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 			}
 
 			success = checkRequireAnyPrivileges(
-					request, response, user.getPrivilege(), requireAnyPrivileges);
+					request, response, user, requireAnyPrivileges);
 			if(!success) {
 				log.error("Access denied [{}]: requireAnyPrivileges failed: values={}",
 						url,
@@ -181,7 +180,7 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 			}
 
 			success = checkRequireAllPrivileges(
-					request, response, user.getPrivilege(), requireAllPrivileges);
+					request, response, user, requireAllPrivileges);
 			if(!success) {
 				log.error("Access denied [{}]: requireAllPrivileges failed: values={}",
 						url,
@@ -195,47 +194,82 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 	}
 
 	private boolean checkRequireRoles(HttpServletRequest request, HttpServletResponse response,
-	                                  Set<Role> roles, String[] requireRoles) {
+	                                  TinyUser user, String[] requireRoles) {
 
 		for(String requireRole : requireRoles) {
-			for(Role userRole : roles) {
+			for(Role userRole : user.getRoles()) {
 				if(userRole.getId().equals(requireRole)) {
 					return true;
 				}
 			}
 		}
 
-		securityManager.onRequireRolesFail(request, response);
+		securityManager.onRequireRolesFail(request, response, user, requireRoles);
 		return false;
 	}
 
+	/**
+	 * Checks items from <code>requireAnyPrivileges</code>.
+	 * The check is passed if user has any of the privileges enumerated.
+	 *
+	 * @param req
+	 * @param res
+	 * @param user
+	 * 		the current user
+	 * @param privileges
+	 * 		the privileges to check.
+	 *
+	 * @return <code>TRUE</code> if passed, and <code>FALSE</code> otherwise.
+	 */
 	private boolean checkRequireAnyPrivileges(HttpServletRequest req, HttpServletResponse res,
-	                                          Privileges privilege, String[] roles) {
+	                                          TinyUser user, String[] privileges) {
+
+		if(privileges == null || privileges.length == 0) {
+			return true;
+		}
 
 		boolean okay = false;
-		for(String key : roles) {
+		for(String key : privileges) {
 
-			if((privilege.getValue(key)) > 0) {
+			if((user.getPrivilege().getValue(key)) > 0) {
 				okay = true;
 				break;
 			}
 		}
 		if(!okay) {
-			securityManager.onRequireAnyPrivilegeFail(req, res);
+			securityManager.onRequireAnyPrivilegeFail(req, res, user, privileges);
 			return false;
 		}
 		return true;
 	}
 
+
+	/**
+	 * Checks items from <code>requireAllPrivileges</code>.
+	 * The check is passed if user has all of the privileges enumerated.
+	 *
+	 * @param req
+	 * @param res
+	 * @param user
+	 * 		the current user
+	 * @param privileges
+	 * 		the privileges to check.
+	 *
+	 * @return <code>TRUE</code> if passed, and <code>FALSE</code> otherwise.
+	 */
 	private boolean checkRequireAllPrivileges(
 			HttpServletRequest req, HttpServletResponse res,
-			Privileges privilegeSet, String[] privileges) {
+			TinyUser user, String[] privileges) {
+
+		if(privileges == null || privileges.length == 0) {
+			return true;
+		}
 
 		if(privileges != null) {
 			for(String key : privileges) {
-				int value = privilegeSet.getValue(key);
+				int value = user.getPrivilege().getValue(key);
 				if(value <= 0) {
-					securityManager.onRequireAllPrivilegesFail(req, res);
+					securityManager.onRequireAllPrivilegesFail(req, res, user, privileges);
 					return false;
 				}
 			}

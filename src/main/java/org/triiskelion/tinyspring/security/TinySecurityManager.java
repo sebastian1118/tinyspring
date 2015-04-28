@@ -64,12 +64,15 @@ public abstract class TinySecurityManager {
 	                                   HttpServletResponse response);
 
 	protected abstract void onRequireAllPrivilegesFail(HttpServletRequest request,
-	                                                   HttpServletResponse response);
+	                                                   HttpServletResponse response,
+	                                                   TinyUser user, String[] requireRoles);
 
 	protected abstract void onRequireAnyPrivilegeFail(HttpServletRequest request,
-	                                                  HttpServletResponse response);
+	                                                  HttpServletResponse response,
+	                                                  TinyUser user, String[] requireRoles);
 
 	public abstract void onRequireRolesFail(HttpServletRequest request,
-	                                        HttpServletResponse response);
+	                                        HttpServletResponse response,
+	                                        TinyUser user, String[] requireRoles);
 
 }

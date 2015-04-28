@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.triiskelion</groupId>
     <artifactId>tinyspring</artifactId>
-    <version>0.10.0-SNAPSHOT</version>
+    <version>0.10.1-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>TinySpring</name>
     <description>Set of tools for spring-mvc projects</description>
