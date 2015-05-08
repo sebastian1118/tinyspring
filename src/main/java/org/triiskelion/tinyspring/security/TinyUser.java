@@ -36,6 +36,25 @@ public class TinyUser {
 		}
 	}
 
+	public boolean hasRole(String roleId) {
+
+		if(roleId == null || roleId.isEmpty()) {
+			return false;
+		}
+
+		for(Role role : roles) {
+			if(role.getId().equals(roleId)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public int hasPrivilege(String key) {
+
+		return this.privilege.getValue(key);
+	}
+
 	/**
 	 * @return this user's roles
 	 */

@@ -196,6 +196,10 @@ public class TinySecurityInterceptor extends HandlerInterceptorAdapter {
 	private boolean checkRequireRoles(HttpServletRequest request, HttpServletResponse response,
 	                                  TinyUser user, String[] requireRoles) {
 
+		if(requireRoles == null || requireRoles.length == 0) {
+			return true;
+		}
+
 		for(String requireRole : requireRoles) {
 			for(Role userRole : user.getRoles()) {
 				if(userRole.getId().equals(requireRole)) {
