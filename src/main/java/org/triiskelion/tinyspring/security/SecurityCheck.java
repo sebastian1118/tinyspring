@@ -6,10 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Created with IntelliJ IDEA.
- * User: Sebastian MA
- * Date: August 11, 2014
- * Time: 15:40
+ * Annotate this to spring-mvc controller class or method to perform security checks.
+ *
+ * @author Sebastian MA
  */
 @Target({ ElementType.METHOD, ElementType.TYPE })
 @Retention(RetentionPolicy.RUNTIME)

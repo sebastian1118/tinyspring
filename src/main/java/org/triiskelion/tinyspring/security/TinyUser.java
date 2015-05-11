@@ -1,10 +1,12 @@
 package org.triiskelion.tinyspring.security;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
 /**
+ * Holds
  * @author Sebastian MA
  */
 public class TinyUser {
@@ -16,6 +18,8 @@ public class TinyUser {
 	protected Privileges privilege = new Privileges();
 
 	protected Object nestedEntity;
+
+	protected HashMap<String, Object> attributes = new HashMap<>();
 
 	/**
 	 * @param username
@@ -89,5 +93,20 @@ public class TinyUser {
 	public Object getNestedEntity() {
 
 		return nestedEntity;
+	}
+
+	public Object addAttribute(String key, Object value) {
+
+		return this.attributes.put(key, value);
+	}
+
+	public Object removeAttribute(String key) {
+
+		return this.attributes.remove(key);
+	}
+
+	public Object getAttribute(String key) {
+
+		return this.attributes.get(key);
 	}
 }

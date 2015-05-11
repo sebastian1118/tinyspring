@@ -58,8 +58,6 @@ public abstract class TinySecurityManager {
 	                                                     HttpServletResponse response);
 
 
-
-
 	protected abstract void onNotLogin(HttpServletRequest request,
 	                                   HttpServletResponse response);
 

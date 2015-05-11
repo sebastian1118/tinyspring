@@ -14,6 +14,22 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
+ * Set this interceptor in spring-mvc configurations to enable security checks.
+ * <p/>
+ * A {@link TinySecurityManager} is obligatory to provider authentication logic.
+ * <p/>
+ * <pre>
+ * {@code<mvc:interceptors>
+ *      <mvc:interceptor>
+ *          <mvc:mapping path="/**"/>
+ *          <bean class="org.triiskelion.tinyspring.security.TinySecurityInterceptor">
+ *              <property name="securityManager" ref="securityManager"/>
+ *          </bean>
+ *      </mvc:interceptor>
+ *  </mvc:interceptors>
+ * }
+ * </pre>
+ *
  * @author Sebastian MA
  */
 public class TinySecurityInterceptor extends HandlerInterceptorAdapter {

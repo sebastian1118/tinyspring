@@ -4,23 +4,41 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Page is a wrapper used to hold a list of pojo as long as the pagination
- * information<br>
+ * Page is a wrapper used to hold a list of retrieved data with its pagination
+ * information. This object is immutable.
  *
  * @author Sebastian MA
  */
 public class Page<T> {
 
+	/**
+	 * page number numbered from 1.
+	 */
 	private final long page;
 
+	/**
+	 * maximum number of the data for one page.
+	 */
 	private final long max;
 
+	/**
+	 * total number of the data
+	 */
 	private final long total;
 
+	/**
+	 * total page of the data
+	 */
 	private final long totalPage;
 
+	/**
+	 * actual number of the data retrieved
+	 */
 	private final long dataSize;
 
+	/**
+	 * associated data
+	 */
 	private final List<T> data;
 
 	/**

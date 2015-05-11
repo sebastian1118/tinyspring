@@ -1,3 +1,6 @@
+## 10.0.0
+* rewrite TinySecurity module
+
 ## 0.9.1
 * update tinyutils to 0.2.0-SNAPSHOT
 * fix serveral bugs
