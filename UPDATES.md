@@ -1,3 +1,6 @@
+## 10.0.0
+* rewrite TinySecurity module
+
 ## 0.9.6
 * fix: interceptor not returns properly.
 
@@ -6,6 +9,7 @@
 
 ## 0.9.4
 * fix: Exception occured while trying to count() an JPQL with wrapped SELECT
+
 
 ## 0.9.1
 * update tinyutils to 0.2.0-SNAPSHOT

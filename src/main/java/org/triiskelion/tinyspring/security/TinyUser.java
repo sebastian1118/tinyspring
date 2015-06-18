@@ -1,70 +1,112 @@
 package org.triiskelion.tinyspring.security;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+
 /**
- * Created with IntelliJ IDEA.
- * User: Sebastian MA
- * Date: August 13, 2014
- * Time: 12:31
+ * Holds
+ * @author Sebastian MA
  */
 public class TinyUser {
 
-	String username;
+	protected String username;
 
-	String password;
+	protected Set<Role> roles;
 
-	String rawPrivilege;
+	protected Privileges privilege = new Privileges();
 
-	PrivilegeSet privilegeSet;
+	protected Object nestedEntity;
 
-	Object nestedEntity;
+	protected HashMap<String, Object> attributes = new HashMap<>();
 
+	/**
+	 * @param username
+	 * 		user's login
+	 * @param roles
+	 * 		user's roles
+	 * @param nestedEntity
+	 * 		entity to associate
+	 */
+	public TinyUser(String username, Collection<Role> roles, Object nestedEntity) {
+
+		this.username = username;
+		this.roles = new HashSet<>(roles);
+		this.nestedEntity = nestedEntity;
+
+		for(Role role : roles) {
+			this.privilege = privilege.merge(role.getPrivilege());
+		}
+	}
+
+	public boolean hasRole(String roleId) {
+
+		if(roleId == null || roleId.isEmpty()) {
+			return false;
+		}
+
+		for(Role role : roles) {
+			if(role.getId().equals(roleId)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public int hasPrivilege(String key) {
+
+		return this.privilege.getValue(key);
+	}
+
+	/**
+	 * @return this user's roles
+	 */
+	public Set<Role> getRoles() {
+
+		return roles;
+	}
+
+	/**
+	 * This user's privileges. The result is the privileges from all the roles of the user
+	 * merged together.
+	 *
+	 * @return this user's privileges
+	 */
+	public Privileges getPrivilege() {
+
+		return privilege;
+	}
+
+
+	/**
+	 * @return user's login
+	 */
 	public String getUsername() {
 
 		return username;
 	}
 
-	public void setUsername(String username) {
-
-		this.username = username;
-	}
-
-	public String getPassword() {
-
-		return password;
-	}
-
-	public void setPassword(String password) {
-
-		this.password = password;
-	}
-
-	public String getRawPrivilege() {
-
-		return rawPrivilege;
-	}
-
-	public void setRawPrivilege(String rawPrivilege) {
-
-		this.rawPrivilege = rawPrivilege;
-	}
-
-	public PrivilegeSet getPrivilegeSet() {
-
-		return privilegeSet;
-	}
-
-	public void setPrivilegeSet(PrivilegeSet privilegeSet) {
-
-		this.privilegeSet = privilegeSet;
-	}
-
+	/**
+	 * @return entity associated to this user
+	 */
 	public Object getNestedEntity() {
 
 		return nestedEntity;
 	}
 
-	public void setNestedEntity(Object nestedEntity) {
+	public Object addAttribute(String key, Object value) {
 
-		this.nestedEntity = nestedEntity;
+		return this.attributes.put(key, value);
+	}
+
+	public Object removeAttribute(String key) {
+
+		return this.attributes.remove(key);
+	}
+
+	public Object getAttribute(String key) {
+
+		return this.attributes.get(key);
 	}
 }

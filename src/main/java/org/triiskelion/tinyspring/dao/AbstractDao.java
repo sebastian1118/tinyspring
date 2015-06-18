@@ -15,7 +15,6 @@ import java.util.List;
  * <p/>
  *
  * @author Sebastian MA
- *
  */
 public abstract class AbstractDao<T> {
 

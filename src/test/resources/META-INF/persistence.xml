@@ -6,6 +6,8 @@
     <persistence-unit name="jpa-hsqldb" transaction-type="RESOURCE_LOCAL">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
+        <!--<class>org.triiskelion.tinyspring.test.dao.base.Book</class>-->
+        <!--<class>org.triiskelion.tinyspring.test.dao.base.User</class>-->
         <properties>
             <property name="javax.persistence.jdbc.driver" value="org.hsqldb.jdbcDriver" />
             <property name="javax.persistence.jdbc.url" value="jdbc:hsqldb:mem:." />
