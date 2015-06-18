@@ -11,6 +11,7 @@ import javax.persistence.Query;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -31,6 +32,15 @@ public class TinyQuery<T> {
 
 	protected static Logger log = LoggerFactory.getLogger(TinyQuery.class);
 
+	static class Verb {
+
+		static int SELECT = 1;
+
+		static int UPDATE = 1 << 1;
+
+		static int DELETE = 2 << 2;
+	}
+
 	/**
 	 * Table alias for the query
 	 */
@@ -39,6 +49,10 @@ public class TinyQuery<T> {
 	protected Class<T> entityClass;
 
 	protected EntityManager entityManager;
+
+	protected int verb;
+
+	protected Map<String, Object> updateValues = new HashMap<>();
 
 	/**
 	 * the raw JPQL expression set by <code>query()</code>
@@ -213,6 +227,34 @@ public class TinyQuery<T> {
 	// BEGIN structural JPQL query
 	//
 
+	public TinyQuery<T> update() {
+
+		verb = Verb.UPDATE;
+
+		deleteClause.append(
+				String.format("UPDATE %s %s", entityClass.getCanonicalName(), TABLE_ALIAS));
+
+
+		return this;
+	}
+
+	public TinyQuery<T> set(String column, Object newValue) {
+
+		require(Verb.UPDATE, "set() can only be invoked after update()");
+
+		updateValues.put(column, newValue);
+
+		return this;
+	}
+
+	private void require(int verb, String text) {
+
+		if((this.verb & verb) == 0) {
+			throw new IllegalStateException(text);
+		}
+
+	}
+
 	/**
 	 * Delete from the entity class managed by the query. Exclusive to select() and update()
 	 * Corresponding JPQL is "DELETE FROM entityClass _this"
@@ -220,6 +262,8 @@ public class TinyQuery<T> {
 	 * @return the same TinyQuery instance
 	 */
 	public TinyQuery<T> delete() {
+
+		this.verb = Verb.DELETE;
 
 		deleteClause.append(
 				String.format("DELETE FROM %s %s", entityClass.getCanonicalName(), TABLE_ALIAS));
@@ -235,6 +279,7 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> select() {
 
+		this.verb = Verb.SELECT;
 		selectClass = entityClass;
 		return this;
 	}
@@ -273,6 +318,7 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> from(Class entityClass, String alias) {
 
+		require(Verb.SELECT, "from() must be invoked after select()");
 
 		fromEntity = new TinyEntity(entityClass, alias);
 		aliasMap.put(entityClass, alias);
@@ -293,6 +339,8 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> join(Class entityClass, String column, String alias) {
 
+		require(Verb.SELECT, "join() must be invoked after select()");
+
 		joinEntity = new TinyEntity(entityClass, alias);
 		joinColumn = column;
 		aliasMap.put(entityClass, alias);
@@ -300,15 +348,16 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Distinguish the result. This will add DISTINCT keyword to the query. Can be invoked
+	 * Distinguish the query result. This will add DISTINCT keyword to the query. Can be invoked
 	 * anywhere before retrieving the result.
 	 *
 	 * @return the same TinyQuery instance
 	 */
 	public TinyQuery<T> distinct() {
 
-		distinct = true;
+		require(Verb.SELECT, "distinct() must be invoked after select()");
 
+		distinct = true;
 		return this;
 	}
 
@@ -377,21 +426,6 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Add an ORDER BY clause. For multiple invocation the clauses will be added successively.
-	 *
-	 * @param column
-	 * 		column to apply
-	 * @param orderType
-	 * 		asc or desc
-	 *
-	 * @return the same TinyQuery instance
-	 */
-	public TinyQuery<T> orderBy(String column, OrderType orderType) {
-
-		return orderBy(null, column, orderType);
-	}
-
-	/**
 	 * Add an ORDER BY clause for the columns from joined tables.
 	 * For multiple invocation the clauses will be added successively.
 	 *
@@ -405,6 +439,8 @@ public class TinyQuery<T> {
 	 * @return the same TinyQuery instance
 	 */
 	public TinyQuery<T> orderBy(String alias, String column, OrderType orderType) {
+
+		require(Verb.SELECT, "orderBy() must be invoked after select()");
 
 		if(orderByClause.length() == 0) {
 			orderByClause.append(" ORDER BY ");
@@ -421,17 +457,18 @@ public class TinyQuery<T> {
 	}
 
 	/**
-	 * Add an GROUP BY clause. Multiple invocation will be added successively.
-	 * </code>
+	 * Add an ORDER BY clause. For multiple invocation the clauses will be added successively.
 	 *
 	 * @param column
 	 * 		column to apply
+	 * @param orderType
+	 * 		asc or desc
 	 *
 	 * @return the same TinyQuery instance
 	 */
-	public TinyQuery<T> groupBy(String column) {
+	public TinyQuery<T> orderBy(String column, OrderType orderType) {
 
-		return groupBy(null, column);
+		return orderBy(null, column, orderType);
 	}
 
 	/**
@@ -447,6 +484,8 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> groupBy(String alias, String column) {
 
+		require(Verb.SELECT, "groupBy() must be invoked after select()");
+
 		if(groupByClause.length() == 0) {
 			groupByClause.append(" GROUP BY ");
 		} else {
@@ -459,6 +498,20 @@ public class TinyQuery<T> {
 		}
 		groupByClause.append(".").append(column).append(" ");
 		return this;
+	}
+
+	/**
+	 * Add an GROUP BY clause. Multiple invocation will be added successively.
+	 * </code>
+	 *
+	 * @param column
+	 * 		column to apply
+	 *
+	 * @return the same TinyQuery instance
+	 */
+	public TinyQuery<T> groupBy(String column) {
+
+		return groupBy(null, column);
 	}
 	//
 	// END structural JPQL query
@@ -479,7 +532,17 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> query(String jpql) {
 
+		if(jpql.toLowerCase().contains("update")) {
+			verb = Verb.UPDATE;
+		} else if(jpql.toLowerCase().contains("delete")) {
+			verb = Verb.DELETE;
+		} else if(jpql.toLowerCase().contains("select")) {
+			verb = Verb.SELECT;
+		} else {
+			throw new IllegalArgumentException("Statement must contain select update or delete");
+		}
 		jpqlExp.append(jpql);
+
 		return this;
 	}
 
@@ -530,6 +593,7 @@ public class TinyQuery<T> {
 	 */
 	public int execute() {
 
+		require(Verb.UPDATE | Verb.DELETE, "execute() must be invoked after update() or delete()");
 		Query query = createQuery();
 		return query.executeUpdate();
 	}
@@ -541,6 +605,7 @@ public class TinyQuery<T> {
 	 */
 	public long count() {
 
+		require(Verb.SELECT, "count() must be invoked after select()");
 		Query query = createQuery(true);
 		return (long) query.getSingleResult();
 	}
@@ -552,6 +617,7 @@ public class TinyQuery<T> {
 	 */
 	public boolean hasNoResult() {
 
+		require(Verb.SELECT, "hasNoResult() must be invoked after select()");
 		return !hasResult();
 	}
 
@@ -562,6 +628,7 @@ public class TinyQuery<T> {
 	 */
 	public boolean hasResult() {
 
+		require(Verb.SELECT, "hasResult() must be invoked after select()");
 		Query query = createQuery(true);
 		return (long) query.getSingleResult() != 0;
 	}
@@ -576,6 +643,7 @@ public class TinyQuery<T> {
 	 */
 	public Object getSingleResult() {
 
+		require(Verb.SELECT, "getSingleResult() must be invoked after select()");
 		Query query = createQuery();
 		return query.getSingleResult();
 	}
@@ -588,6 +656,7 @@ public class TinyQuery<T> {
 	 */
 	public Optional<T> getFirstResult() {
 
+		require(Verb.SELECT, "getFirstResult() must be invoked after select()");
 		List<T> result = this.limit(0, 1).getResultList();
 		return result.size() > 0 ? Optional.of(result.get(0)) : Optional.<T>absent();
 	}
@@ -608,6 +677,7 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> page(Integer page, Integer numberPerPage) {
 
+		require(Verb.SELECT, "page() must be invoked after select()");
 		if(page != null && numberPerPage != null) {
 			this.pageNumber = page;
 			this.numberPerPage = numberPerPage;
@@ -635,6 +705,7 @@ public class TinyQuery<T> {
 	 */
 	public TinyQuery<T> limit(Integer startRow, Integer maxRow) {
 
+		require(Verb.SELECT, "limit() must be invoked after select()");
 		if(startRow != null && maxRow != null) {
 			this.startRow = startRow;
 			this.maxRow = maxRow;
@@ -650,6 +721,7 @@ public class TinyQuery<T> {
 	 */
 	public List<T> getResultList() {
 
+		require(Verb.SELECT, "getResultList() must be invoked after select()");
 		Query query = createQuery();
 		if(startRow >= 0 && maxRow >= 0) {
 			query.setFirstResult(startRow).setMaxResults(maxRow);
@@ -665,6 +737,7 @@ public class TinyQuery<T> {
 	 */
 	public <R> List<R> getResultList(Class<R> clazz) {
 
+		require(Verb.SELECT, "getResultList() must be invoked after select()");
 		Query query = createQuery();
 		if(startRow >= 0 && maxRow >= 0) {
 			query.setFirstResult(startRow).setMaxResults(maxRow);
@@ -682,6 +755,7 @@ public class TinyQuery<T> {
 	 */
 	public Page<T> getPagedResult() {
 
+		require(Verb.SELECT, "getPagedResult() must be invoked after select()");
 		if(paged) {
 			long total = count();
 			List<T> result = getResultList();
@@ -725,6 +799,8 @@ public class TinyQuery<T> {
 	 */
 	public List getUntypedResultList() {
 
+		require(Verb.SELECT, "getUntypedResultList() must be invoked after select()");
+
 		Query query = createQuery();
 		if(startRow >= 0 && maxRow >= 0) {
 			query.setFirstResult(startRow).setMaxResults(maxRow);
@@ -754,7 +830,17 @@ public class TinyQuery<T> {
 
 		StringBuilder queryString = new StringBuilder();
 
-		if(deleteClause.length() > 0) {
+		if(verb == Verb.UPDATE) {
+
+			queryString.append(deleteClause);
+			queryString.append(" SET ");
+			for(String k : updateValues.keySet()) {
+				queryString.append(TABLE_ALIAS).append(".")
+				           .append(k).append("=:").append(k).append(" ");
+			}
+
+		} else if(verb == Verb.DELETE) {
+
 			queryString.append(deleteClause);
 
 		} else {
@@ -780,6 +866,10 @@ public class TinyQuery<T> {
 
 		for(String key : namedParameters.keySet()) {
 			query.setParameter(key, namedParameters.get(key));
+		}
+
+		for(String key : updateValues.keySet()) {
+			query.setParameter(key, updateValues.get(key));
 		}
 
 		return query;
@@ -862,7 +952,7 @@ public class TinyQuery<T> {
 				int begin = jpqlExp.toString().toLowerCase().indexOf("select");
 				int end = jpqlExp.toString().toLowerCase().indexOf("from");
 				if(begin >= 0 && end > 0) {
-					String content = jpqlExp.toString().substring(begin + 7, end-1);
+					String content = jpqlExp.toString().substring(begin + 7, end - 1);
 					return jpqlExp.toString()
 					              .replaceFirst(" " + content + " ", " count(" + content + ") ");
 				} else {
@@ -880,12 +970,13 @@ public class TinyQuery<T> {
 	 */
 	public String toString() {
 
-		StringBuilder buffer = new StringBuilder(buildSelectClause(false));
-		buffer.append(buildJoinClause());
-		buffer.append(whereClause);
-		buffer.append(orderByClause);
-		buffer.append(groupByClause);
-		return buffer.toString();
+		return new StringBuilder()
+				.append(buildSelectClause(false))
+				.append(buildJoinClause())
+				.append(whereClause)
+				.append(orderByClause)
+				.append(groupByClause)
+				.toString();
 	}
 
 	/**

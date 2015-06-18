@@ -27,7 +27,7 @@ public class TestAbstractDao {
 
 	EntityManager entityManager;
 
-	String[] names = new String[]{ "alice", "beatrice", "carol", "daisy", "ellen", "ellen" };
+	String[] names = new String[]{ "alice", "beth", "carol", "daisy", "ellen", "ellen" };
 
 	private PersonDao personDao;
 

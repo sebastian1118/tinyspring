@@ -23,10 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.triiskelion.tinyspring.dao.TinyPredicate.*;
 
 /**
- * Created with IntelliJ IDEA.
- * User: Sebastian MA
- * Date: August 21, 2014
- * Time: 16:22
+ * @author Sebastian MA
  */
 public class TestTinyQuery {
 
@@ -34,7 +31,7 @@ public class TestTinyQuery {
 
 	EntityManager entityManager;
 
-	String[] names = new String[]{ "alice", "beatrice", "carol", "daisy", "ellen", "ellen" };
+	String[] names = new String[]{ "alice", "beth", "carol", "daisy", "ellen", "ellen" };
 
 	@Before
 	public void before() {
@@ -73,6 +70,47 @@ public class TestTinyQuery {
 
 
 		entityManager.getTransaction().commit();
+	}
+
+	@Test
+	public void testUpdate() {
+
+		entityManager.getTransaction().begin();
+		TinyQuery<User> query = new TinyQuery<>(entityManager, User.class, true);
+
+		int ret = query.update()
+		               .set("name", "xenia")
+		               .where(in("name", listOf("alice", "beth")))
+		               .execute();
+		entityManager.getTransaction().commit();
+
+		query = new TinyQuery<>(entityManager, User.class, true);
+		long num = query.select()
+		                .where(equal("name", "xenia"))
+		                .count();
+
+		assertEquals(2, ret);
+		assertEquals(2, num);
+
+	}
+
+	@Test
+	public void testDelete() {
+
+		TinyQuery<Person> query;
+		query = new TinyQuery<>(entityManager, Person.class, true);
+
+		entityManager.getTransaction().begin();
+		long result = query.delete()
+		                   .where(equal("name", "alice"))
+		                   .execute();
+		entityManager.getTransaction().commit();
+		assertEquals(1, result);
+
+		query = new TinyQuery<>(entityManager, Person.class, true);
+		assertTrue(query.ignoreNull(false).select()
+		                .where(equal("name", "alice"))
+		                .hasNoResult());
 	}
 
 	@Test
@@ -139,24 +177,7 @@ public class TestTinyQuery {
 
 	}
 
-	@Test
-	public void testDelete() {
 
-		TinyQuery<Person> query;
-		query = new TinyQuery<>(entityManager, Person.class, true);
-
-		entityManager.getTransaction().begin();
-		long result = query.delete()
-		                   .where(equal("name", "alice"))
-		                   .execute();
-		entityManager.getTransaction().commit();
-		assertEquals(1, result);
-
-		query = new TinyQuery<>(entityManager, Person.class, true);
-		assertTrue(query.ignoreNull(false).select()
-		                .where(equal("name", "alice"))
-		                .hasNoResult());
-	}
 
 	@Test
 	public void testSelectColumns() {
@@ -264,7 +285,7 @@ public class TestTinyQuery {
 
 		query = new TinyQuery<>(entityManager, User.class, true);
 		result = query.select()
-		              .where(or(equal("name", "alice"), equal("name", "beatrice")))
+		              .where(or(equal("name", "alice"), equal("name", "beth")))
 		              .and(or(equal("sort", 0), equal("sort", 1), equal("sort", 2)))
 		              .count();
 		assertEquals(2, result);
@@ -318,13 +339,13 @@ public class TestTinyQuery {
 
 		List<User> result
 				= query.select()
-				       .where(in("name", listOf("alice", "beatrice", "daisy")))
+				       .where(in("name", listOf("alice", "beth", "daisy")))
 				       .orderBy("name", OrderType.ASC)
 				       .getResultList();
 
 		assertEquals(3, result.size());
 		assertEquals("alice", result.get(0).getName());
-		assertEquals("beatrice", result.get(1).getName());
+		assertEquals("beth", result.get(1).getName());
 		assertEquals("daisy", result.get(2).getName());
 	}
 
@@ -337,23 +358,23 @@ public class TestTinyQuery {
 		List<Person> result
 				= query.query("SELECT m FROM Person m WHERE m.name=:name OR m.name=?1")
 				       .param(1, "alice")
-				       .param("name", "beatrice")
+				       .param("name", "beth")
 				       .getResultList();
 
 		assertEquals(2, result.size());
 		assertEquals("alice", result.get(0).getName());
-		assertEquals("beatrice", result.get(1).getName());
+		assertEquals("beth", result.get(1).getName());
 
 		// partial query
 		query = new TinyQuery<>(entityManager, Person.class, true);
 		List<Person> result1
 				= query.query("SELECT m FROM Person m")
 				       .where(equal("m", "name", "alice"))
-				       .or(equal("m", "name", "beatrice"))
+				       .or(equal("m", "name", "beth"))
 				       .getResultList();
 		assertEquals(2, result1.size());
 		assertEquals("alice", result1.get(0).getName());
-		assertEquals("beatrice", result1.get(1).getName());
+		assertEquals("beth", result1.get(1).getName());
 
 
 		// raw query with pagination
@@ -381,7 +402,7 @@ public class TestTinyQuery {
 				       .getResultList();
 
 		assertEquals(3, result.size());
-		assertEquals("beatrice", result.get(0).getName());
+		assertEquals("beth", result.get(0).getName());
 	}
 
 	@Test
@@ -414,6 +435,8 @@ public class TestTinyQuery {
 		assertEquals(3, result.getTotal());
 
 	}
+
+
 
 
 }

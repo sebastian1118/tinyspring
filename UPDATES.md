@@ -1,4 +1,7 @@
-## 10.0.0
+## 0.11.0
+* add update()
+
+## 0.10.0
 * rewrite TinySecurity module
 
 ## 0.9.6
@@ -19,8 +22,8 @@
 * rewrite select() from() join() to make more flexibility
 * select by column names works for multiple tables
 * getResultList() and getPagedResult() can receive a parameter to cast result to another type.
-* query() can only define the select clause and be used with other clause methods(where(),
-orderBy(), etc.). like:
+* query() can define only the select clause and used with other clause methods like where(),
+orderBy(), etc. like:
 
 		query.query("SELECT ... FROM ... JOIN ...")
          .where(...)
